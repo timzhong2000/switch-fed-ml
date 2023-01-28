@@ -3,10 +3,10 @@
 
 #include <cstdint>
 #include "packet.h"
+#include "type.h"
 
 namespace switchml
 {
-  typedef uint32_t TensorId;
 
   class Tensor
   {
