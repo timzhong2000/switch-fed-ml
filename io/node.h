@@ -16,14 +16,21 @@ namespace switchml
     Client,
   };
 
+  struct NodeOption
+  {
+    std::string ip_addr;
+    uint16_t port;
+    uint16_t rpc_port;
+  };
+
   class Node
   {
   public:
     uint16_t port_;
-    std::string ip_addr;
-    NodeType node_type;
+    std::string ip_addr_;
+    uint16_t rpc_port_;
 
-    Node(std::string ip_addr, uint16_t port);
+    Node(NodeOption option);
 
     ~Node();
 
