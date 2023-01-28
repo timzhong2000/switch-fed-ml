@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
 #include "tensor.h"
 
 namespace switchml
@@ -35,10 +36,10 @@ namespace switchml
     ~Node();
 
     /** send tensor to node */
-    int send(Node &node, Tensor &tensor);
+    int send(Node &node, std::shared_ptr<Tensor> tensor);
 
     /** receive tensor from node */
-    int receive(Node &node, Tensor &tensor);
+    int receive(Node &node, std::shared_ptr<Tensor> tensor);
 
     /** return -1 when failed */
     int addChild(std::shared_ptr<Node> node);
@@ -58,6 +59,8 @@ namespace switchml
   private:
     std::vector<std::shared_ptr<Node>> children;
     std::shared_ptr<Node> parent;
+    std::map<TensorId, std::shared_ptr<Tensor>> pending_tensors;
+    // TODO: rpc endpoint，client 和 server 都提供 rpc 端点，用于同步以及可靠重传
   };
 }
 #endif

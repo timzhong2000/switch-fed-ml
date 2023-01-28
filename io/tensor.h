@@ -6,11 +6,14 @@
 
 namespace switchml
 {
+  typedef uint32_t TensorId;
+
   class Tensor
   {
     void *buffer;
     uint64_t len;
     DataType data_type;
+    TensorId tensor_id;
 
     /** create a new tensor*/
     Tensor(uint64_t len, DataType data_type);
