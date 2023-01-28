@@ -2,6 +2,8 @@
 #define SWITCH_FED_ML_PACKET_H
 #include <cstdint>
 
+#define DATA_LEN 1024
+
 namespace switchml
 {
   enum DataType
