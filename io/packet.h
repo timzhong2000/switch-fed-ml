@@ -31,7 +31,7 @@ namespace switchml
   public:
     SwitchmlHeader *header;
     void *data;
-    
+
     Packet();
 
     Packet(Packet &pkt) = delete;
@@ -42,6 +42,7 @@ namespace switchml
     void *buffer;
   };
 
+  int sizeofDataType(DataType data_type);
 }
 
 #endif

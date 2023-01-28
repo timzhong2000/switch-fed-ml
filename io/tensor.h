@@ -16,14 +16,7 @@ namespace switchml
     TensorId tensor_id;
 
     /** create a new tensor*/
-    Tensor(uint64_t len, DataType data_type);
-
-    /**
-     * create a tensor slice, the element size is defined by data_type
-     * @param offset offset of element
-     * @param len len of element
-     */
-    Tensor(Tensor tensor, uint64_t offset, uint64_t len);
+    Tensor(uint64_t len, DataType data_type, TensorId tensor_id);
 
     /** do not support tensor copy */
     Tensor(Tensor &tensor) = delete;
@@ -32,6 +25,18 @@ namespace switchml
     Tensor(Tensor &&tensor);
 
     ~Tensor();
+
+    /**
+     * copy buf to tensor.
+     * 
+     * the element size is determined by data_type
+     * 
+     * @param len number of element
+     * @return -1 if tensor is moved, -2 if exceed max length;
+     */
+    int write(void *buf, uint64_t offset, uint64_t len);
+
+    void* seek(uint64_t offset);
   };
 }
 #endif
