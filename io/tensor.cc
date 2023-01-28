@@ -9,6 +9,10 @@ namespace switchml
     this->buffer = malloc(sizeofDataType(data_type) * len);
   }
 
+  Tensor::Tensor(void *buffer, uint64_t len, DataType data_type, TensorId tensor_id) : buffer(buffer), len(len), data_type(data_type), tensor_id(tensor_id), is_external_buffer(true)
+  {
+  }
+
   Tensor::Tensor(Tensor &&tensor)
   {
     this->buffer = tensor.buffer;
@@ -22,7 +26,7 @@ namespace switchml
 
   Tensor::~Tensor()
   {
-    if (this->buffer)
+    if (this->buffer && !this->is_external_buffer)
     {
       free(this->buffer);
     }
