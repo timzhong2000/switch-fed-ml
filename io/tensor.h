@@ -15,6 +15,7 @@ namespace switchml
     uint64_t len; // the len of element, not byte
     DataType data_type;
     TensorId tensor_id;
+    uint32_t aggregate_num;
 
     /** create a new tensor*/
     Tensor(uint64_t len, DataType data_type, TensorId tensor_id);
@@ -41,6 +42,10 @@ namespace switchml
      * @return -1 if tensor is moved, -2 if exceed max length;
      */
     int write(void *buf, uint64_t offset, uint64_t len);
+
+    void add(Tensor &tensor);
+
+    void divide(int factor);
 
     void *seek(uint64_t offset);
 

@@ -17,9 +17,9 @@ namespace switchml
 
   enum NodeType
   {
-    Server,
-    Switch,
-    Client,
+    SERVER,
+    SWITCH,
+    CLIENT,
   };
 
   struct NodeOptions
@@ -54,10 +54,10 @@ namespace switchml
     inline NodeType getNodeType()
     {
       if (this->children.size() == 0 && this->parent)
-        return NodeType::Client;
+        return NodeType::CLIENT;
       if (!this->parent)
-        return NodeType::Server;
-      return NodeType::Switch;
+        return NodeType::SERVER;
+      return NodeType::SWITCH;
     }
 
     void receive_loop();
