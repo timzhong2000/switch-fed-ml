@@ -72,6 +72,10 @@ namespace switchml
     // 假设超时为 1 秒，检查 bitmap 处理丢包重传
     sleep(1);
 
+    std::vector<Offset> missing_packet_offset_list; // TODO: 统计丢包
+
+    this->rpc_retransmission(node, group_id, missing_packet_offset_list, elements_per_packet, tensor);
+
     this->pending_rx_tensors.erase(key);
     this->pending_rx_bitmaps.erase(key);
 
@@ -111,7 +115,7 @@ namespace switchml
     return 0;
   }
 
-  size_t Node::rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, Tensor &tensor)
+  size_t Node::rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, std::shared_ptr<Tensor> tensor)
   {
     // TODO: 可靠传输
     // 如果是 switch，需要模拟聚合

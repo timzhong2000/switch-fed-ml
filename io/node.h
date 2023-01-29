@@ -91,7 +91,7 @@ namespace switchml
      * @param slice_len 每个缺失片段的长度，等于每个 UDP 包 tensor 载荷的数量
      * @return 将会直接写入 tensor
      */
-    size_t rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, Tensor &tensor);
+    size_t rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, std::shared_ptr<Tensor> tensor);
   };
 }
 #endif
