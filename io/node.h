@@ -8,6 +8,7 @@
 #include "tensor.h"
 #include <boost/asio.hpp>
 #include "bitmap.h"
+#include <tuple>
 
 using namespace boost::asio;
 
@@ -26,6 +27,7 @@ namespace switchml
     std::string ip_addr;
     uint16_t port;
     uint16_t rpc_port;
+    NodeId node_id;
   };
 
   class Node
@@ -40,7 +42,7 @@ namespace switchml
     /** send tensor to node */
     int send(Node &node, std::shared_ptr<Tensor> tensor);
 
-    /** receive tensor from node */
+    /** receive a tensor from node */
     int receive(Node &node, std::shared_ptr<Tensor> tensor);
 
     /** return -1 when failed */
@@ -58,17 +60,27 @@ namespace switchml
       return NodeType::Switch;
     }
 
+    void receive_loop();
+
   private:
-    std::vector<std::shared_ptr<Node>> children;
+    std::map<NodeId, std::shared_ptr<Node>> children;
     std::shared_ptr<Node> parent;
-    std::map<TensorId, std::shared_ptr<Tensor>> pending_tensors;
+
+    std::map<TensorId, std::shared_ptr<Tensor>> pending_tx_tensors;
+    std::map<std::tuple<TensorId, NodeId>, std::shared_ptr<Tensor>> pending_rx_tensors;
+    std::map<std::tuple<TensorId, NodeId>, std::shared_ptr<Bitmap>> pending_rx_bitmaps;
+    
     boost::asio::io_service io_service;
     ip::udp::socket socket;
 
     // TODO: rpc endpoint，client 和 server 都提供 rpc 端点，用于同步以及可靠重传
 
-    int send_to_udp(Node &node, Packet &pkt);
-    int receive_from_udp(Packet &pkt);
+    size_t send_to_udp(Node &node, Packet &pkt);
+
+    /**
+     * @param offset offset of elemenet, not byte
+     */
+    void *seek_pending_tensor(TensorId tensor_id, uint32_t offset);
   };
 }
 #endif

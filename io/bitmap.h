@@ -2,6 +2,7 @@
 #define SWITCH_FED_ML_BITMAP_H
 
 #include <cstddef>
+#include <vector>
 
 namespace switchml
 {
@@ -9,12 +10,11 @@ namespace switchml
   {
   public:
     Bitmap(size_t size);
-    ~Bitmap();
     void set(size_t index, bool val);
     bool get(size_t index);
 
   private:
-    bool *bitmap;
+    std::vector<bool> bitmap;
   };
 }
 #endif

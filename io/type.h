@@ -8,6 +8,7 @@
 namespace switchml
 {
   typedef uint32_t TensorId;
+  typedef uint32_t NodeId;
 
   enum DataType
   {
@@ -19,7 +20,8 @@ namespace switchml
   {
 
     TensorId tensor_id;
-
+    NodeId node_id;
+    
     /** 偏移量，代表偏移多少个 element，不是 byte，element 大小由 data_type 决定 */
     uint32_t offset;
 

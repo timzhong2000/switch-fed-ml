@@ -4,12 +4,11 @@ namespace switchml
 {
   Bitmap::Bitmap(size_t size)
   {
-    this->bitmap = new bool[size];
-  }
-
-  Bitmap::~Bitmap()
-  {
-    delete[] this->bitmap;
+    this->bitmap.reserve(size);
+    for (size_t i = 0; i < size; i++)
+    {
+      bitmap.push_back(false);
+    }
   }
 
   void Bitmap::set(size_t index, bool val)
