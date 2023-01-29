@@ -2,15 +2,15 @@
 
 namespace switchml
 {
-  int Server::multicast(std::vector<std::shared_ptr<Node>> &node_list, std::shared_ptr<Tensor> &tensor)
+  int Server::multicast(std::vector<std::shared_ptr<Node>> &node_list, GroupId group_id, std::shared_ptr<Tensor> &tensor)
   {
     auto node_list_to_send = this->optimize(node_list);
     std::vector<std::thread> threads;
 
     for (auto node : node_list_to_send)
     {
-      threads.push_back(std::thread([this, node, tensor]
-                                    { this->send(*node, tensor); }));
+      threads.push_back(std::thread([this, node, tensor, group_id]
+                                    { this->send(*node, group_id, tensor); }));
     }
 
     while (!threads.empty())
@@ -22,7 +22,7 @@ namespace switchml
     return 0;
   }
 
-  int Server::reduce(std::vector<std::shared_ptr<Node>> &node_list, std::shared_ptr<Tensor> &tensor)
+  int Server::reduce(std::vector<std::shared_ptr<Node>> &node_list, GroupId group_id, std::shared_ptr<Tensor> &tensor)
   {
     auto node_list_to_receive = this->optimize(node_list);
     std::vector<std::shared_ptr<Tensor>> tensor_buffer;
@@ -33,8 +33,8 @@ namespace switchml
     {
       auto temp_tensor = std::make_shared<Tensor>(tensor->len, tensor->data_type, tensor->tensor_id);
       tensor_buffer.push_back(temp_tensor);
-      threads.push_back(std::thread([this, node, temp_tensor]
-                                    { this->receive(*node, temp_tensor); }));
+      threads.push_back(std::thread([this, node, temp_tensor, group_id]
+                                    { this->receive(*node, group_id, temp_tensor); }));
     }
 
     while (!threads.empty())

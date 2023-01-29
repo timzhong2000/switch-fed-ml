@@ -7,6 +7,7 @@ namespace switchml
 {
   class Client : public Node
   {
+  public:
     Client(NodeOptions options);
   };
 }

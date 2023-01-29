@@ -12,7 +12,7 @@ namespace switchml
     this->socket.close();
   }
 
-  int Node::send(Node &node, std::shared_ptr<Tensor> tensor)
+  int Node::send(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor)
   {
     this->pending_tx_tensors.insert({tensor->tensor_id, tensor});
     // 拆包
@@ -36,10 +36,12 @@ namespace switchml
       pkt.header->ecn = false;
       pkt.header->offset = offset;
       pkt.header->tensor_id = tensor->tensor_id;
-      pkt.header->ucast_grp = 0;
+      pkt.header->ucast_grp = group_id;
       memcpy(pkt.data, tensor->seek(offset), elements_per_packet * sizeofDataType(tensor->data_type)); // TODO: 优化指针传递而不是拷贝
       this->send_to_udp(node, pkt);
     }
+
+    // TODO: 等待对方节点确认接收完毕再清理资源
 
     // 清理资源
     this->pending_tx_tensors.erase(tensor->tensor_id);
@@ -53,7 +55,7 @@ namespace switchml
     return 0;
   }
 
-  int Node::receive(Node &node, std::shared_ptr<Tensor> tensor)
+  int Node::receive(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor)
   {
     // 拆包
     // 每个 packet 容纳的 element 数量
@@ -106,6 +108,13 @@ namespace switchml
   int Node::removeChild(std::shared_ptr<Node> node)
   {
     this->children.erase(node->options.node_id);
+    return 0;
+  }
+
+  size_t Node::rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, Tensor &tensor)
+  {
+    // TODO: 可靠传输
+    // 如果是 switch，需要模拟聚合
     return 0;
   }
 }

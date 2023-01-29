@@ -39,11 +39,14 @@ namespace switchml
 
     ~Node();
 
-    /** send tensor to node */
-    int send(Node &node, std::shared_ptr<Tensor> tensor);
+    /**
+     * send tensor to node
+     * @param node 是抽象的 node，不会使用 node 的有状态部分
+     */
+    int send(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor);
 
     /** receive a tensor from node */
-    int receive(Node &node, std::shared_ptr<Tensor> tensor);
+    int receive(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor);
 
     /** return -1 when failed */
     int addChild(std::shared_ptr<Node> node);
@@ -69,7 +72,7 @@ namespace switchml
     std::map<TensorId, std::shared_ptr<Tensor>> pending_tx_tensors;
     std::map<std::tuple<TensorId, NodeId>, std::shared_ptr<Tensor>> pending_rx_tensors;
     std::map<std::tuple<TensorId, NodeId>, std::shared_ptr<Bitmap>> pending_rx_bitmaps;
-    
+
     boost::asio::io_service io_service;
     ip::udp::socket socket;
 
@@ -81,6 +84,14 @@ namespace switchml
      * @param offset offset of elemenet, not byte
      */
     void *seek_pending_tensor(TensorId tensor_id, uint32_t offset);
+
+    /**
+     * 通过 rpc 从指定 node 读取 tensor 缺失的部分
+     * @param node 如果是 switch，则会深度遍历叶子节点完成聚合
+     * @param slice_len 每个缺失片段的长度，等于每个 UDP 包 tensor 载荷的数量
+     * @return 将会直接写入 tensor
+     */
+    size_t rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, Tensor &tensor);
   };
 }
 #endif
