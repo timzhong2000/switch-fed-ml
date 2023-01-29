@@ -10,6 +10,7 @@ namespace switchml
   class Packet
   {
   public:
+    void *buffer;
     SwitchmlHeader *header;
     void *data;
 
@@ -19,8 +20,11 @@ namespace switchml
 
     Packet(Packet &&pkt);
 
+    ~Packet();
+    
+    int size();
+
   private:
-    void *buffer;
   };
 
   int sizeofDataType(DataType data_type);

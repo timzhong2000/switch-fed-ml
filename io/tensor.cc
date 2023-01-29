@@ -45,6 +45,6 @@ namespace switchml
 
   void *Tensor::seek(uint64_t offset)
   {
-    return this->buffer + sizeofDataType(this->data_type) * offset;
+    return (uint8_t *)this->buffer + sizeofDataType(this->data_type) * offset;
   }
 }

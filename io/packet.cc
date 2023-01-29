@@ -32,4 +32,9 @@ namespace switchml
       free(this->buffer);
     }
   }
+
+  int Packet::size()
+  {
+    return DATA_LEN + sizeof(SwitchmlHeader);
+  }
 }

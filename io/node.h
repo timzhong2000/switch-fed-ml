@@ -6,6 +6,10 @@
 #include <memory>
 #include <map>
 #include "tensor.h"
+#include <boost/asio.hpp>
+#include "bitmap.h"
+
+using namespace boost::asio;
 
 namespace switchml
 {
@@ -17,7 +21,7 @@ namespace switchml
     Client,
   };
 
-  struct NodeOption
+  struct NodeOptions
   {
     std::string ip_addr;
     uint16_t port;
@@ -27,11 +31,9 @@ namespace switchml
   class Node
   {
   public:
-    uint16_t port_;
-    std::string ip_addr_;
-    uint16_t rpc_port_;
+    NodeOptions options;
 
-    Node(NodeOption option);
+    Node(NodeOptions options);
 
     ~Node();
 
@@ -60,7 +62,13 @@ namespace switchml
     std::vector<std::shared_ptr<Node>> children;
     std::shared_ptr<Node> parent;
     std::map<TensorId, std::shared_ptr<Tensor>> pending_tensors;
+    boost::asio::io_service io_service;
+    ip::udp::socket socket;
+
     // TODO: rpc endpoint，client 和 server 都提供 rpc 端点，用于同步以及可靠重传
+
+    int send_to_udp(Node &node, Packet &pkt);
+    int receive_from_udp(Packet &pkt);
   };
 }
 #endif

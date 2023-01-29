@@ -12,7 +12,7 @@ namespace switchml
   {
   public:
     void *buffer;
-    uint64_t len;
+    uint64_t len; // the len of element, not byte
     DataType data_type;
     TensorId tensor_id;
 
