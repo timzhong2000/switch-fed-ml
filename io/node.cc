@@ -28,7 +28,7 @@ namespace switchml
     Packet pkt;
     for (size_t i = 0; i < total_packet_num; i++)
     {
-      uint32_t offset = i * elements_per_packet; // offset of elements
+      Offset offset = i * elements_per_packet; // offset of elements
       pkt.header->aggregate_num = 1;
       pkt.header->bypass = false;
       pkt.header->data_type = tensor->data_type;

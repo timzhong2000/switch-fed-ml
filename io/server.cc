@@ -44,7 +44,7 @@ namespace switchml
     }
 
     // 重新聚合
-    int aggregate_num = 0;
+    AggregateNum aggregate_num = 0;
     for (auto temp_tensor : tensor_buffer)
     {
       aggregate_num += tensor->aggregate_num;

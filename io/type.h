@@ -8,7 +8,9 @@
 namespace switchml
 {
   typedef uint32_t TensorId;
-  typedef uint32_t NodeId;
+  typedef uint32_t Offset;
+  typedef uint16_t NodeId;
+  typedef uint8_t AggregateNum;
 
   enum DataType
   {
@@ -18,17 +20,23 @@ namespace switchml
 
   struct SwitchmlHeader
   {
+    // 0 byte
 
     TensorId tensor_id;
-    NodeId node_id;
-    
+
+    // 4 byte
+
     /** 偏移量，代表偏移多少个 element，不是 byte，element 大小由 data_type 决定 */
-    uint32_t offset;
+    Offset offset;
+
+    // 8 byte
 
     /** 多播组号，下发时此参数有效，默认为 0 代表不进行多播，这个参数可以用来判断是下发包还是聚合包 */
-    uint16_t ucast_grp;
-    uint16_t aggregate_num;
+    NodeId node_id;
+    uint8_t ucast_grp;
+    AggregateNum aggregate_num;
 
+    // 96bit
     bool ecn;
     bool bypass;
     DataType data_type;

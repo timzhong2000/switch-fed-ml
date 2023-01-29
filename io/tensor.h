@@ -15,7 +15,7 @@ namespace switchml
     uint64_t len; // the len of element, not byte
     DataType data_type;
     TensorId tensor_id;
-    uint32_t aggregate_num;
+    AggregateNum aggregate_num;
 
     /** create a new tensor*/
     Tensor(uint64_t len, DataType data_type, TensorId tensor_id);
