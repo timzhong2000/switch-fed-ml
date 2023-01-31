@@ -1,16 +1,20 @@
 from packet import Packet
-import math
 from typing import List
 from multiprocessing import Process
 
 from node import Node
 import numpy as np
 import threading
-import time
-import socket
 
 
 class Server(Node):
+
+    def __init__(self, ip_addr: str, port: int, rpc_port: int, node_id: int, is_remote_node: bool):
+        super().__init__(ip_addr, port, rpc_port, node_id, is_remote_node)
+
+    def close(self):
+        self._close()
+
     def multicast(self, node_list: List[Node], group_id: int, tensor_id: int, tensor: np.ndarray):
         threads: List[threading.Thread] = []
         tensors: List[np.ndarray] = []
@@ -52,32 +56,3 @@ class Server(Node):
     def get_node_list_by_group_id(self, group_id: int):
         # TODO
         return self.children
-
-
-if __name__ == '__main__':
-    server = Server("127.0.0.1", 50000, 50001, 0)
-    threading.Thread(target=server.receive_thread).start()
-
-    # 256 * int32 = 1KB
-    # 100MB
-    tensor0 = np.zeros((100 * 1024 * 256), dtype=np.int32)
-    tensor1 = np.ones((100 * 1024 * 256), dtype=np.int32)
-
-    clients = []
-    node_id = 1
-    for i in range(6):
-        client = Node('127.0.0.1', 50000+node_id*2, 50000+node_id*2+1, node_id)
-        node_id += 1
-        clients.append(client)
-
-    for client in clients:
-        Process(target=client.send, args=[server, 0, 12345, tensor1]).start()
-
-    def server_receive():
-        server.reduce(clients, 0, 12345, tensor0)
-        print(tensor0)
-        return
-
-    receive_thread = threading.Thread(target=server_receive)
-    receive_thread.start()
-    receive_thread.join()

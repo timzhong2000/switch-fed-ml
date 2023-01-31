@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// 发送端向接收端重传
+message Retransmission{
+  message Request {
+    int32 tensor_id = 1;
+    int32 node_id = 2;
+    // map<packet_num, tensor_slice>
+    map<int32, string> data = 99;
+  };
+
+}
+
+// 发送端查询接收方丢包状态
+message PacketLoss {
+  message Request {
+    int32 tensor_id = 1;
+    int32 node_id = 2;
+  };
+
+  message Response {
+    repeated int32 missing_packet_list = 1;
+  };
+}
+
+message Sync {
+  message SendBarrierRequest {
+    int32 node_id = 1;
+    int32 tensor_id = 2;
+  };
+}
+
+message Null {}
+
+service SwitchmlIO {
+  // 检查当前节点是否存在准备好接收，如果没有就阻塞直到可以发送
+  rpc SendBarrier (Sync.SendBarrierRequest) returns (Null);
+
+  // 发送方重传特定片段，然后接收方完成接收任务
+  rpc Retransmission (Retransmission.Request) returns (Null);
+  
+  // 发送方检查接收方丢包状态
+  rpc ReadMissingSlice (PacketLoss.Request) returns (PacketLoss.Response);
+}
