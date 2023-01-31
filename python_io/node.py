@@ -13,7 +13,6 @@ from grpc_server import GrpcServer
 from packet import elemenet_per_packet, pkt_size
 from time import sleep
 
-
 class Node:
     def __init__(self, ip_addr: str, port: int, rpc_port: int, node_id: int, is_remote_node: bool):
         self.options = {
@@ -65,7 +64,7 @@ class Node:
         # type: (Node, int, int, np.ndarray)->int
         self.pending_tx_tensor[tensor_id] = tensor
         total_packet_num = math.ceil(tensor.size / elemenet_per_packet)
-
+        current_node_id = self.options['node_id']
         # 等待节点进入接收状态
         node.send_barrier(tensor_id)
         
@@ -78,7 +77,7 @@ class Node:
                 flow_control=0,
                 tensor_id=tensor_id,  # uint32
                 packet_num=i,  # uint32
-                node_id=self.options['node_id'],  # uint16
+                node_id=current_node_id,  # uint16
                 aggregate_num=1,         # uint16
                 ucast_grp=group_id,             # uint32
                 data_type=packet.DataType.INT32.value,  # uint8
@@ -87,10 +86,10 @@ class Node:
             self.send_by_udp(node, group_id, pkt)
 
         # TODO: 等待对方完成接收（如果 node 是 switch 则等待 switch 下面所有节点接收完成）
-        # missing_slice = node.read_missing_slice(tensor_id)
-        # rpc 目标节点，请求携带缺少的 slice
+        # 暂时 switch 没有支持可靠传输，所以这里需要端到端检查丢包情况
         sleep(1)
-        node.retranmission(tensor_id, self.options['node_id'], {})
+        missing_slice = node.rpc_read_missing_slice(tensor_id, current_node_id)
+        node.rpc_retranmission(tensor_id, current_node_id, {})
 
         del self.pending_tx_tensor[tensor_id]
         return
@@ -147,7 +146,7 @@ class Node:
         return True
 
     # 向这个节点重传数据，不可以向当前节点和 Switch 重传
-    def retranmission(self, tensor_id, node_id, data):
+    def rpc_retranmission(self, tensor_id, node_id, data):
         # type: (int, int, dict[int,  str]) -> None
         self.rpc_stub.Retransmission(
             Retransmission.Request(
@@ -158,7 +157,7 @@ class Node:
         )
 
     # 获取这个节点的丢包状态，不可以向当前节点和 Switch 查询
-    def read_missing_slice(self, tensor_id, node_id):
+    def rpc_read_missing_slice(self, tensor_id, node_id):
         # type: (int, int) -> list
         return self.rpc_stub.ReadMissingSlice(
             PacketLoss.Request(

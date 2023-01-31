@@ -8,6 +8,7 @@ import io_pb2_grpc
 import threading
 from packet import elemenet_per_packet
 
+
 class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
     def __init__(self, node) -> None:
         super().__init__()
@@ -29,9 +30,9 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
 
     def ReadMissingSlice(self, request: PacketLoss.Request, context):
         job = self.node.rx_jobs.get((request.tensor_id, request.node_id))
-        missing_packet_list, _ = np.where(
-            job.bitmap == 0) * elemenet_per_packet
+        missing_packet_list = np.where(job.bitmap == 0)[0]
         return PacketLoss.Response(missing_packet_list=missing_packet_list)
+
 
 class GrpcServer:
     def __init__(self, node):
@@ -40,8 +41,10 @@ class GrpcServer:
             SwitchmlIOServicer(node),
             self.server
         )
-        self.server.add_insecure_port('0.0.0.0:%d' % (node.options["rpc_port"]))
+        self.server.add_insecure_port(
+            '0.0.0.0:%d' % (node.options["rpc_port"]))
         self.server.start()
         threading.Thread(target=self.server.wait_for_termination).start()
+
     def stop(self):
         self.server.stop(grace=None)
