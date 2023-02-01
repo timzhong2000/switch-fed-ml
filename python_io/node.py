@@ -85,7 +85,6 @@ class Node:
             pkt.deparse_buffer()
             packet_list.append(pkt)
         prepare_packet_end = time.time()
-        print("构建包耗时 %f" % (prepare_packet_end - prepare_packet_start))
 
         send_start = time.time()
         threads = []
@@ -97,7 +96,8 @@ class Node:
         for t in threads:
             t.join()
         send_end = time.time()
-        print("发送耗时 %f" % (send_end - send_start))
+        print("构建包耗时 %f 发送耗时 %f 速率 %f MB/s" % (prepare_packet_end - prepare_packet_start,
+              send_end - send_start, tensor.size * 4 / 1024 / 1024 / (send_end - send_start)))
 
         # TODO: 等待对方完成接收（如果 node 是 switch 则等待 switch 下面所有节点接收完成）
         # 暂时 switch 没有支持可靠传输，所以这里需要端到端检查丢包情况
@@ -111,13 +111,11 @@ class Node:
         # 每个线程分配一个 socket，避免内核 socket 锁争用
         dst_addr = (node.options['ip_addr'], node.options['port'])
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        send_sock.bind(
-            (self.options["ip_addr"], 60000 + pool_index))
+        send_sock.bind((self.options["ip_addr"], 0))
         rtt = 0.001  # 1ms
 
         rx_pkt = Packet()
         for i in range(int(len(packet_list) / switch_pool_size)):
-            send_sock.settimeout(rtt)
             current_packet_num = i * switch_pool_size + pool_index
             tx_pkt: Packet = packet_list[current_packet_num]
             send_sock.sendto(tx_pkt.buffer, dst_addr)
@@ -129,6 +127,7 @@ class Node:
                     rx_pkt.parse_buffer()
                     end = time.time()
                     rtt = (end - start) * 2  # 避免过多重传
+                    send_sock.settimeout(rtt)
                     if rx_pkt.ack:
                         break
                     if rx_pkt.ecn:
@@ -140,6 +139,7 @@ class Node:
                     rtt *= 1.5
                     # resend
                     send_sock.sendto(tx_pkt.buffer, dst_addr)
+                    send_sock.settimeout(rtt)
         send_sock.close()
 
     def receive_thread(self) -> None:

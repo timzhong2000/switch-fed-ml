@@ -21,8 +21,8 @@ header_format = ">BIIHHIB"
 header_size = struct.calcsize(header_format)
 
 # packer param
-# elemenet_per_packet = 2048 # MTU 9000
-elemenet_per_packet = 256 # MTU 1100
+elemenet_per_packet = 2048 # MTU 9000
+# elemenet_per_packet = 256 # MTU 1100
 switch_pool_size = 64
 pkt_size = elemenet_per_packet * 4 + header_size
 
@@ -81,7 +81,7 @@ class Packet:
             header_val[5],
             header_val[6]
         )
-        if self.ack:
+        if self.ack or self.ecn:
             return
         self.set_tensor(np.frombuffer(
             self.buffer,
