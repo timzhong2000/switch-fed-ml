@@ -1,12 +1,11 @@
-#ifndef SWITCH_FED_ML_SERVER_H
-#define SWITCH_FED_ML_SERVER_H
+#pragma once
 
 #include <vector>
 #include <memory>
 #include "node.h"
 #include "tensor.h"
 
-namespace switchml
+namespace switchfl
 {
   class Server : public Node
   {
@@ -24,4 +23,3 @@ namespace switchml
     std::vector<std::shared_ptr<Node>> optimize(std::vector<std::shared_ptr<Node>> &node_list);
   };
 }
-#endif

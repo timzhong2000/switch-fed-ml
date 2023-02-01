@@ -1,6 +1,6 @@
 #include "bitmap.h"
 
-namespace switchml
+namespace switchfl
 {
   Bitmap::Bitmap(size_t size)
   {

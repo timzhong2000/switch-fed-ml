@@ -55,6 +55,16 @@
     "map": "cpp",
     "iostream": "cpp",
     "mutex": "cpp",
-    "thread": "cpp"
-  }
+    "thread": "cpp",
+    "*.ipp": "cpp",
+    "csignal": "cpp",
+    "bitset": "cpp",
+    "codecvt": "cpp",
+    "complex": "cpp",
+    "set": "cpp",
+    "future": "cpp",
+    "iomanip": "cpp",
+    "typeindex": "cpp",
+    "variant": "cpp"
+  },
 }

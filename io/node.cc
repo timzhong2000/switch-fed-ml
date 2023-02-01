@@ -1,9 +1,9 @@
 #include "node.h"
 #include <boost/asio.hpp>
 
-#define SEND_WINDOW_SIZE 1 // 每次同时向外发送 SEND_WINDOW_SIZE 个包
+#define SEND_WINDOW_SIZE 64 // 每次同时向外发送 SEND_WINDOW_SIZE 个包
 
-namespace switchml
+namespace switchfl
 {
   Node::Node(NodeOptions options) : options(options), io_service(), socket(io_service, ip::udp::endpoint(ip::udp::v4(), options.port)){};
 
@@ -14,92 +14,96 @@ namespace switchml
 
   int Node::send(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor)
   {
-    this->pending_tx_tensors.insert({tensor->tensor_id, tensor});
+    // std::vector<std::thread> threads;
+    // threads.push_back(std::thread([&]
+    //                               { this->send_thread(node, 0, group_id, tensor); }));
+
+    // for (size_t i = 0; i < this->tx_window_size; i++)
+    // {
+    //   threads[i].join();
+    // }
+
+    auto send_socket = ip::udp::socket(this->io_service, ip::udp::endpoint(ip::udp::v4(), 60000));
+
     // 拆包
     // 每个 packet 容纳的 element 数量
     uint32_t elements_per_packet = (DATA_LEN / sizeofDataType(tensor->data_type));
+    // 当前线程应该发送的包数量
     uint32_t total_packet_num = tensor->len / elements_per_packet;
-    uint32_t receive_cnt = 0;
 
-    // TODO: rpc 通知对方节点进行接收
+    auto dst_endpoint = ip::udp::endpoint(ip::address::from_string(node.options.ip_addr), node.options.port);
 
-    // 全部
-    // TODO: 支持 sendBurst，支持 ecn
-    Packet pkt;
+    Packet tx_pkt;
+    Packet rx_pkt;
+
     for (size_t i = 0; i < total_packet_num; i++)
     {
-      Offset offset = i * elements_per_packet; // offset of elements
-      pkt.header->aggregate_num = 1;
-      pkt.header->bypass = false;
-      pkt.header->data_type = tensor->data_type;
-      pkt.header->node_id = this->options.node_id;
-      pkt.header->ecn = false;
-      pkt.header->offset = offset;
-      pkt.header->tensor_id = tensor->tensor_id;
-      pkt.header->ucast_grp = group_id;
-      memcpy(pkt.data, tensor->seek(offset), elements_per_packet * sizeofDataType(tensor->data_type)); // TODO: 优化指针传递而不是拷贝
-      this->send_to_udp(node, pkt);
+      tx_pkt.header->flow_control = 0;
+      tx_pkt.header->aggregate_num = 1;
+      tx_pkt.header->data_type = tensor->data_type;
+      tx_pkt.header->node_id = this->options.node_id;
+      tx_pkt.header->packet_id = i;
+      tx_pkt.header->tensor_id = tensor->tensor_id;
+      tx_pkt.header->ucast_grp = group_id;
+      memcpy(tx_pkt.data, tensor->seek(tx_pkt.header->packet_id * elements_per_packet), elements_per_packet * sizeofDataType(tensor->data_type));
+      while (true)
+      {
+        auto sent = send_socket.send_to(buffer(tx_pkt.buffer, tx_pkt.size()), dst_endpoint, 0);
+        // auto recv = send_socket.receive(buffer(rx_pkt.buffer, rx_pkt.size()));
+        // if (rx_pkt.isAck())
+          break;
+      }
     }
 
-    // TODO: 等待对方节点确认接收完毕再清理资源
-
-    // 清理资源
-    this->pending_tx_tensors.erase(tensor->tensor_id);
     return 0;
   }
 
-  size_t Node::send_to_udp(Node &node, Packet &pkt)
+  void Node::send_thread(Node &node, int send_window_index, GroupId group_id, std::shared_ptr<Tensor> tensor)
   {
-    auto dst_endpoint = ip::udp::endpoint(ip::address::from_string(node.options.ip_addr), node.options.port);
-    auto sent = this->socket.send_to(buffer(pkt.buffer, pkt.size()), dst_endpoint, 0);
-    return 0;
   }
 
   int Node::receive(Node &node, GroupId group_id, std::shared_ptr<Tensor> tensor)
   {
-    // 拆包
-    // 每个 packet 容纳的 element 数量
     uint32_t elements_per_packet = (DATA_LEN / sizeofDataType(tensor->data_type));
     uint32_t total_packet_num = tensor->len / elements_per_packet;
-    uint32_t receive_cnt = 0;
 
     auto key = std::make_tuple(tensor->tensor_id, node.options.node_id);
     auto bitmap = std::make_shared<Bitmap>(total_packet_num);
-    this->pending_rx_bitmaps.insert({key, bitmap});
-    this->pending_rx_tensors.insert({key, tensor});
-    // TODO: wait until tensor loaded
+    auto job = std::make_shared<Job>(tensor, bitmap);
+    this->rx_jobs.insert(std::make_pair(key, job));
 
-    // 假设超时为 1 秒，检查 bitmap 处理丢包重传
-    sleep(1);
+    sleep(2);
+    // job->wait_until_job_finish();
+    // job->finish();
 
-    std::vector<Offset> missing_packet_offset_list; // TODO: 统计丢包
-
-    this->rpc_retransmission(node, group_id, missing_packet_offset_list, elements_per_packet, tensor);
-
-    this->pending_rx_tensors.erase(key);
-    this->pending_rx_bitmaps.erase(key);
+    this->rx_jobs.erase(key);
+    int cnt = 0;
+    for (size_t i = 0; i < total_packet_num; i++)
+    {
+      cnt += job->bitmap->get(i);
+    }
 
     return 0;
   }
 
   // server 和 worker 节点启动的时候，启动接收线程，这里需要保证单线程写入 tensor
-  void Node::receive_loop()
+  void Node::receive_thread()
   {
     Packet pkt;
+    ip::udp::endpoint ep;
     while (1)
     {
-      this->socket.receive(buffer(pkt.buffer, pkt.size()));
+      this->socket.receive_from(buffer(pkt.buffer, pkt.size()), ep);
       auto key = std::make_tuple(pkt.header->tensor_id, pkt.header->node_id);
-      auto tensor = this->pending_rx_tensors.find(key)->second;
-      auto bitmap = this->pending_rx_bitmaps.find(key)->second;
-      if (!tensor)
+      auto job = this->rx_jobs.find(key)->second;
+      if (!job)
       {
-        // 说明这个包到来的时机太晚，已经进入了重传流程，直接丢弃
+        // 没有接收任务，直接忽略
         continue;
       }
-      uint32_t elements_per_packet = (DATA_LEN / sizeofDataType(tensor->data_type));
-      tensor->write(pkt.data, pkt.header->offset, elements_per_packet);
-      bitmap->set(pkt.header->offset / elements_per_packet, true);
+      job->handle_packet(pkt);
+      pkt.setAck(true);
+      this->socket.send_to(buffer(pkt.buffer, sizeof(SwitchmlHeader)), ep);
     }
   }
 
@@ -115,7 +119,7 @@ namespace switchml
     return 0;
   }
 
-  size_t Node::rpc_retransmission(Node &node, GroupId group_id, std::vector<Offset> &missing_packet_offset_list, Offset slice_len, std::shared_ptr<Tensor> tensor)
+  size_t Node::rpc_retransmission(Node &node, GroupId group_id, std::vector<PacketId> &missing_packet_id_list, PacketId slice_len, std::shared_ptr<Tensor> tensor)
   {
     // TODO: 可靠传输
     // 如果是 switch，需要模拟聚合

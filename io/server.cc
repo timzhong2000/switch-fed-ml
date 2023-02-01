@@ -1,6 +1,6 @@
 #include "server.h"
 
-namespace switchml
+namespace switchfl
 {
   int Server::multicast(std::vector<std::shared_ptr<Node>> &node_list, GroupId group_id, std::shared_ptr<Tensor> &tensor)
   {

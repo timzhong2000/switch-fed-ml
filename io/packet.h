@@ -1,10 +1,9 @@
-#ifndef SWITCH_FED_ML_PACKET_H
-#define SWITCH_FED_ML_PACKET_H
+#pragma once
 
 #include <cstdint>
 #include "type.h"
 
-namespace switchml
+namespace switchfl
 {
 
   class Packet
@@ -21,13 +20,16 @@ namespace switchml
     Packet(Packet &&pkt);
 
     ~Packet();
-    
+
+    void setAck(bool val);
+    void setEcn(bool val);
+    bool isAck();
+    bool isEcn();
+
     int size();
 
   private:
   };
 
-  int sizeofDataType(DataType data_type);
+  int sizeofDataType(uint8_t data_type);
 }
-
-#endif

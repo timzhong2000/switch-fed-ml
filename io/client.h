@@ -1,9 +1,8 @@
-#ifndef SWITCH_FED_ML_CLIENT_H
-#define SWITCH_FED_ML_CLIENT_H
+#pragma once
 
 #include "node.h"
 
-namespace switchml
+namespace switchfl
 {
   class Client : public Node
   {
@@ -11,4 +10,3 @@ namespace switchml
     Client(NodeOptions options);
   };
 }
-#endif

@@ -1,9 +1,14 @@
 #include "packet.h"
 #include <cstdlib>
 
-namespace switchml
+namespace switchfl
 {
-  int sizeofDataType(DataType data_type)
+
+  uint8_t ack_bitmap = 1 << 0;
+  uint8_t ecn_bitmap = 1 << 1;
+  uint8_t bypass_bitmap = 1 << 2;
+
+  int sizeofDataType(uint8_t data_type)
   {
     return 4;
   }
@@ -36,5 +41,25 @@ namespace switchml
   int Packet::size()
   {
     return DATA_LEN + sizeof(SwitchmlHeader);
+  }
+
+  void Packet::setAck(bool val)
+  {
+    this->header->flow_control |= val ? ack_bitmap : !ack_bitmap;
+  }
+
+  void Packet::setEcn(bool val)
+  {
+    this->header->flow_control |= val ? ecn_bitmap : !ecn_bitmap;
+  }
+
+  bool Packet::isAck()
+  {
+    return this->header->flow_control & ack_bitmap;
+  }
+  
+  bool Packet::isEcn()
+  {
+    return this->header->flow_control & ecn_bitmap;
   }
 }

@@ -1,10 +1,9 @@
-#ifndef SWITCH_FED_ML_BITMAP_H
-#define SWITCH_FED_ML_BITMAP_H
+#pragma once
 
 #include <cstddef>
 #include <vector>
 
-namespace switchml
+namespace switchfl
 {
   class Bitmap
   {
@@ -17,4 +16,3 @@ namespace switchml
     std::vector<bool> bitmap;
   };
 }
-#endif

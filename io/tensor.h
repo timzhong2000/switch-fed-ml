@@ -1,11 +1,10 @@
-#ifndef SWITCH_FED_ML_TENSOR_H
-#define SWITCH_FED_ML_TENSOR_H
+#pragma once
 
 #include <cstdint>
 #include "packet.h"
 #include "type.h"
 
-namespace switchml
+namespace switchfl
 {
 
   class Tensor
@@ -13,17 +12,17 @@ namespace switchml
   public:
     void *buffer;
     uint64_t len; // the len of element, not byte
-    DataType data_type;
+    uint8_t data_type;
     TensorId tensor_id;
     AggregateNum aggregate_num;
 
     /** create a new tensor*/
-    Tensor(uint64_t len, DataType data_type, TensorId tensor_id);
+    Tensor(uint64_t len, uint8_t data_type, TensorId tensor_id);
 
     /**
      * @deprecated not recommend, the **external buffer** pointer is **dangerous**
      */
-    Tensor(void *buffer, uint64_t len, DataType data_type, TensorId tensor_id);
+    Tensor(void *buffer, uint64_t len, uint8_t data_type, TensorId tensor_id);
 
     /** do not support tensor copy */
     Tensor(Tensor &tensor) = delete;
@@ -53,4 +52,3 @@ namespace switchml
     bool is_external_buffer = false;
   };
 }
-#endif

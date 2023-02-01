@@ -1,6 +1,6 @@
 #include "client.h"
 
-namespace switchml
+namespace switchfl
 {
   Client::Client(NodeOptions options) : Node(options) {}
 }
