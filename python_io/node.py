@@ -86,13 +86,13 @@ class Node:
             packet_list.append(pkt)
         prepare_packet_end = time.time()
 
-        send_start = time.time()
         threads = []
         for i in range(switch_pool_size):
             t = threading.Thread(target=self.__send_to_pool,
                                  args=[node, i, packet_list])
             t.start()
             threads.append(t)
+        send_start = time.time()
         for t in threads:
             t.join()
         send_end = time.time()
@@ -112,34 +112,32 @@ class Node:
         dst_addr = (node.options['ip_addr'], node.options['port'])
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         send_sock.bind((self.options["ip_addr"], 0))
-        rtt = 0.001  # 1ms
+        rtt = 0.01  # init 10 ms
 
         rx_pkt = Packet()
+        
         for i in range(int(len(packet_list) / switch_pool_size)):
             current_packet_num = i * switch_pool_size + pool_index
             tx_pkt: Packet = packet_list[current_packet_num]
-            send_sock.sendto(tx_pkt.buffer, dst_addr)
-            recv = False
-            while not recv:
+            rtt = max(rtt, 0.001)
+            send_sock.settimeout(rtt)
+            while True:
                 try:
                     start = time.time()
+                    send_sock.sendto(tx_pkt.buffer, dst_addr)
                     send_sock.recv_into(rx_pkt.buffer)
                     rx_pkt.parse_buffer()
                     end = time.time()
-                    rtt = (end - start) * 2  # 避免过多重传
-                    send_sock.settimeout(rtt)
-                    if rx_pkt.ack:
+                    rtt = (end - start) * 1.3 # 避免过多重传
+                    if rx_pkt.ack and rx_pkt.packet_num == tx_pkt.packet_num:  # 可能接收到旧的返回值
                         break
                     if rx_pkt.ecn:
+                        rtt *= 2
                         time.sleep(rtt)
-                        # resend
-                        send_sock.sendto(tx_pkt.buffer, dst_addr)
+                        continue
                 except:
                     # timeout
-                    rtt *= 1.5
-                    # resend
-                    send_sock.sendto(tx_pkt.buffer, dst_addr)
-                    send_sock.settimeout(rtt)
+                    rtt *= 1.3
         send_sock.close()
 
     def receive_thread(self) -> None:
