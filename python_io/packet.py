@@ -9,7 +9,6 @@ class DataType(Enum):
     FLOAT32 = 1
 
 
-
 # 包头结构
 # flow_control  uint8
 # tensor_id     uint32
@@ -22,8 +21,9 @@ header_format = ">BIIHHIB"
 header_size = struct.calcsize(header_format)
 
 # packer param
-elemenet_per_packet = 256
-send_window_size = 256
+# elemenet_per_packet = 2048 # MTU 9000
+elemenet_per_packet = 256 # MTU 1100
+switch_pool_size = 64
 pkt_size = elemenet_per_packet * 4 + header_size
 
 
@@ -37,6 +37,8 @@ bypass_bitmap = 1 << 2
 
 class Packet:
     def __init__(self) -> None:
+        self.buffer = bytearray(pkt_size)
+
         self.flow_control = 0
         self.tensor_id = 0
         self.packet_num = 0
@@ -68,8 +70,8 @@ class Packet:
     def set_tensor(self, tensor: np.ndarray):
         self.tensor = tensor
 
-    def from_buffer(self, buffer: str):
-        header_val = struct.unpack_from(header_format, buffer)
+    def parse_buffer(self):
+        header_val = struct.unpack_from(header_format, self.buffer)
         self.set_header(
             header_val[0],
             header_val[1],
@@ -82,27 +84,14 @@ class Packet:
         if self.ack:
             return
         self.set_tensor(np.frombuffer(
-            buffer,
+            self.buffer,
             dtype=np.uint32,
             offset=header_size
         ))
         return
 
-    def create_ack_packet(self):
-        header_buffer = struct.pack(
-            header_format,
-            self.flow_control | ack_bitmap,
-            self.tensor_id,
-            self.packet_num,
-            self.node_id,
-            self.aggregate_num,
-            self.ucast_grp,
-            self.data_type
-        )
-        return header_buffer
-
-    def to_buffer(self):
-        header_buffer = struct.pack(
+    def deparse_buffer(self):
+        self.buffer[0: header_size] = struct.pack(
             header_format,
             self.flow_control,
             self.tensor_id,
@@ -112,5 +101,17 @@ class Packet:
             self.ucast_grp,
             self.data_type
         )
-        data_buffer = self.tensor.tobytes()
-        return header_buffer + data_buffer
+        self.buffer[header_size: pkt_size] = self.tensor.tobytes()
+        return
+
+    def gen_ack_packet(self):
+        return struct.pack(
+            header_format,
+            self.flow_control | ack_bitmap,
+            self.tensor_id,
+            self.packet_num,
+            self.node_id,
+            self.aggregate_num,
+            self.ucast_grp,
+            self.data_type
+        )

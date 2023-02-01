@@ -10,8 +10,9 @@ from io_pb2_grpc import *
 from io_pb2 import *
 import typing
 from grpc_server import GrpcServer
-from packet import elemenet_per_packet, pkt_size
-from time import sleep
+from packet import elemenet_per_packet, pkt_size, switch_pool_size
+import time
+
 
 class Node:
     def __init__(self, ip_addr: str, port: int, rpc_port: int, node_id: int, is_remote_node: bool):
@@ -25,18 +26,16 @@ class Node:
         }
         self.children: dict[int, Node] = {}
 
-        self.pending_tx_tensor: dict[int, np.ndarray] = {}
-        self.pending_tx_tensor_lock = threading.Lock()
-
         self.rx_jobs: dict[(int, int), Job] = {}
         self.rx_jobs_lock = threading.Lock()
 
         self.rpc_stub: typing.Union[SwitchmlIOStub, None] = None
         self.rpc_server: typing.Union[GrpcServer, None] = None
-        self.socket: typing.Union[socket.socket, None] = None
+        self.rx_socket: typing.Union[socket.socket, None] = None
         if not is_remote_node:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.socket.bind((self.options['ip_addr'], self.options['port']))
+            self.rx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.rx_socket.bind(
+                (self.options['ip_addr'], self.options['port']))
             print("成功监听数据端口 %s:%d" %
                   (self.options['ip_addr'], self.options['port']))
             self.__receive_thread = threading.Thread(
@@ -62,16 +61,16 @@ class Node:
     # tensor 长度需要被 elemenet_per_packet 整除
     def send(self, node, group_id, tensor_id, tensor):
         # type: (Node, int, int, np.ndarray)->int
-        self.pending_tx_tensor[tensor_id] = tensor
+
         total_packet_num = math.ceil(tensor.size / elemenet_per_packet)
         current_node_id = self.options['node_id']
         # 等待节点进入接收状态
         node.send_barrier(tensor_id)
-        
-        # TODO: 添加发送窗口
-        
-        pkt = Packet()
+
+        prepare_packet_start = time.time()
+        packet_list = []
         for i in range(total_packet_num):
+            pkt = Packet()
             offset = i * elemenet_per_packet
             pkt.set_header(
                 flow_control=0,
@@ -83,37 +82,80 @@ class Node:
                 data_type=packet.DataType.INT32.value,  # uint8
             )
             pkt.set_tensor(tensor[offset: offset+elemenet_per_packet])
-            self.send_by_udp(node, group_id, pkt)
+            pkt.deparse_buffer()
+            packet_list.append(pkt)
+        prepare_packet_end = time.time()
+        print("构建包耗时 %f" % (prepare_packet_end - prepare_packet_start))
+
+        send_start = time.time()
+        threads = []
+        for i in range(switch_pool_size):
+            t = threading.Thread(target=self.__send_to_pool,
+                                 args=[node, i, packet_list])
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        send_end = time.time()
+        print("发送耗时 %f" % (send_end - send_start))
 
         # TODO: 等待对方完成接收（如果 node 是 switch 则等待 switch 下面所有节点接收完成）
         # 暂时 switch 没有支持可靠传输，所以这里需要端到端检查丢包情况
-        sleep(1)
         missing_slice = node.rpc_read_missing_slice(tensor_id, current_node_id)
         node.rpc_retranmission(tensor_id, current_node_id, {})
 
-        del self.pending_tx_tensor[tensor_id]
         return
 
-    def send_by_udp(self, node, group_id, packet):
-        # type: (Node, int, int, Packet)->int
-        self.socket.sendto(packet.to_buffer(),
-                           (node.options['ip_addr'], node.options['port']))
-        return
+    def __send_to_pool(self, node, pool_index, packet_list):
+        # type: (Node, int, list)->None
+        # 每个线程分配一个 socket，避免内核 socket 锁争用
+        dst_addr = (node.options['ip_addr'], node.options['port'])
+        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        send_sock.bind(
+            (self.options["ip_addr"], 60000 + pool_index))
+        rtt = 0.001  # 1ms
+
+        rx_pkt = Packet()
+        for i in range(int(len(packet_list) / switch_pool_size)):
+            send_sock.settimeout(rtt)
+            current_packet_num = i * switch_pool_size + pool_index
+            tx_pkt: Packet = packet_list[current_packet_num]
+            send_sock.sendto(tx_pkt.buffer, dst_addr)
+            recv = False
+            while not recv:
+                try:
+                    start = time.time()
+                    send_sock.recv_into(rx_pkt.buffer)
+                    rx_pkt.parse_buffer()
+                    end = time.time()
+                    rtt = (end - start) * 2  # 避免过多重传
+                    if rx_pkt.ack:
+                        break
+                    if rx_pkt.ecn:
+                        time.sleep(rtt)
+                        # resend
+                        send_sock.sendto(tx_pkt.buffer, dst_addr)
+                except:
+                    # timeout
+                    rtt *= 1.5
+                    # resend
+                    send_sock.sendto(tx_pkt.buffer, dst_addr)
+        send_sock.close()
 
     def receive_thread(self) -> None:
         pkt = Packet()
-        buffer = bytearray(pkt_size)
         while True:
-            _, client = self.socket.recvfrom_into(buffer, pkt_size)
-            pkt.from_buffer(buffer)
-            if pkt.ack:
+            _, client = self.rx_socket.recvfrom_into(pkt.buffer, pkt_size)
+            pkt.parse_buffer()
+            if pkt.ack or pkt.ecn:
+                # TODO
                 continue
             key: tuple = (pkt.tensor_id, pkt.node_id)
             job = self.rx_jobs.get(key)
             if job is None:
                 continue
             job.handle_packet(pkt)
-            self.socket.sendto(pkt.create_ack_packet(), client)
+            self.rx_socket.sendto(pkt.gen_ack_packet(), client)
 
     def receive_async(self, node, group_id, tensor_id, tensor):
         # type: (Node, int, int, np.ndarray) -> Job
@@ -129,7 +171,8 @@ class Node:
 
         received = job.bitmap.sum()
         total = job.bitmap.size
-        print("receive %d packet, expect %d, loss %f %%" % (received, total, (total - received) / total))
+        print("receive %d packet, expect %d, loss %f %%" %
+              (received, total, 100 * (total - received) / total))
         key: tuple = (tensor_id, node.options['node_id'])
         del self.rx_jobs[key]
         return
