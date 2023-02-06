@@ -28,7 +28,15 @@ control Receiver(
       drop;
     }
 
+    #ifndef DEBUG
     size = 128;
+    #else
+    const entries = {
+      (1): set_group_config(1, 0x0001); // node_id = 1
+      (2): set_group_config(2, 0x0003); // node_id = 1 & 2
+      (3): set_group_config(3, 0x0007); // node_id = 1 & 2 & 3
+    }
+    #endif
     default_action = drop;
   }
   // group config end
@@ -48,7 +56,16 @@ control Receiver(
       set_bitmap;
     }
 
+    #ifndef DEBUG
     size = 128;
+    #else
+    const entries = {
+      (1): set_bitmap(0x0001);
+      (2): set_bitmap(0x0002);
+      (3): set_bitmap(0x0004);
+    }
+    #endif
+    
     default_action = drop;
   }
   // bitmap end

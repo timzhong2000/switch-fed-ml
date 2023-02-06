@@ -1,6 +1,8 @@
 #ifndef _SWITCH_FL_MAIN
 #define _SWITCH_FL_MAIN
 
+#define DEBUG
+
 #include <core.p4>
 #include <v1model.p4>
 #include "type.p4"
@@ -94,8 +96,14 @@ control MyIngress(
             drop_action;
             to_port_action;
         }
-
-        size = 1024;
+        #ifndef DEBUG
+        size = 128;
+        #else
+        const entries = {
+            (0x0a0a0000 &&& 0xffff0000) : to_port_action(0); // 10.10.0.0 => port 0  
+            (0x0b0b0000 &&& 0xffff0000) : to_port_action(1); // 11.11.0.0 => port 1
+        }
+        #endif
         default_action = drop_action;
     }
 
@@ -122,7 +130,26 @@ control MyComputeChecksum(
     inout headers_t hdr,
     inout metadata_t meta)
 {
-    apply { }
+    apply {
+        update_checksum(
+            hdr.ipv4.isValid(),
+            {
+                hdr.ipv4.version,
+                hdr.ipv4.ihl,
+                hdr.ipv4.diffserv,
+                hdr.ipv4.total_len,
+                hdr.ipv4.identification,
+                hdr.ipv4.flags,
+                hdr.ipv4.frag_offset,
+                hdr.ipv4.ttl,
+                hdr.ipv4.protocol,
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr
+            },
+            hdr.ipv4.hdr_checksum,
+            HashAlgorithm.csum16
+        );
+    }
 }
 
 control MyEgressDeparser(

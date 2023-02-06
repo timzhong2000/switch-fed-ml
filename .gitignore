@@ -36,3 +36,6 @@ __pycache__
 
 # VS Code
 .vscode
+
+# P4
+*.bmv2

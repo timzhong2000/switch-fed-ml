@@ -237,6 +237,11 @@ control Processor (
     // 多任务时可能会出现竞争
     is_free.read(current_pool_is_free, pool_id);
     if(current_pool_is_free == 1) {
+      if(hdr.retranmission == 1) { 
+          // 这种情况是 client 没有收到 ack 进行了错误的超时重传。此时已经在聚合下一个包，应该通知 client 结束重传
+          metadata.processor_action = Processor_Action.ACK;
+          return;
+      }
       acquire(pool_id);
     } else {
       bit<32> current_pool_segment_id;
@@ -244,7 +249,13 @@ control Processor (
       current_segment_id.read(current_pool_segment_id, pool_id);
       current_tensor_id.read(current_pool_tensor_id, pool_id);
       if(hdr.segment_id != current_pool_segment_id || hdr.tensor_id != current_pool_tensor_id) {
-        metadata.processor_action = Processor_Action.ECN;
+        if(hdr.retranmission == 1) { 
+          // 这种情况是 client 没有收到 ack 进行了错误的超时重传。此时已经在聚合下一个包，应该通知 client 结束重传
+          metadata.processor_action = Processor_Action.ACK;
+        } else {
+          // 这种情况是多任务场景下，两个任务使用同一个聚合器，后到的任务应该等待
+          metadata.processor_action = Processor_Action.ECN;
+        }
         return;
       }
     }

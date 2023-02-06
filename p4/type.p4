@@ -17,8 +17,10 @@ const bit<16> SwitchFL_PORT = 50000;
 enum bit<8> Processor_Action {
   ECN = 1,
   DROP = 2,
-  MCAST = 3 // 聚合器释放时发送给 ps 并且广播 ack
+  MCAST = 3, // 聚合器释放时发送给 ps 并且广播 ack
+  ACK = 4 // 单播 ack
 }
+
 
 struct metadata_t {
   /// 从 recevier 模块读取
@@ -33,7 +35,7 @@ struct metadata_t {
   bit<32> aggregate_finish_bitmap;
 
   // process 判断包发送行为
-  bit<8> processor_action;
+  Processor_Action processor_action;
 
   bool has_payload; // 对于 ack 包不需要携带 payload
 }
@@ -74,7 +76,8 @@ header switchfl_h {
   bit<1>              ecn;
   bit<1>              bypass;
   bit<1>              multicast; // PS 向 client 发送的广播包
-  bit<4>              __reserved;
+  bit<1>              retranmission; // client 重传包
+  bit<3>              __reserved;
   // flow control end
 
   bit<8>              data_type;
