@@ -4,7 +4,7 @@ import numpy as np
 
 if __name__ == '__main__':
     # 256 * int32 = 1KB
-    tensor = np.zeros((100 * 1024 * 256), dtype=np.int32)
+    tensor = np.zeros((1024 * 256), dtype=np.int32)
 
     node_id = 1
     server = Server("127.0.0.1", 50000, 50001, 0, False)

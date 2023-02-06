@@ -10,8 +10,10 @@ from io_pb2_grpc import *
 from io_pb2 import *
 import typing
 from grpc_server import GrpcServer
-from packet import elemenet_per_packet, pkt_size, switch_pool_size
+from packet import elemenet_per_packet, pkt_size, switch_pool_size, retranmission_bitmap
 import time
+
+add_delay_ms = 10
 
 
 class Node:
@@ -61,9 +63,12 @@ class Node:
     # tensor 长度需要被 elemenet_per_packet 整除
     def send(self, node, group_id, tensor_id, tensor):
         # type: (Node, int, int, np.ndarray)->int
+        dst_addr = (node.options['ip_addr'], node.options['port'])
+        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         total_packet_num = math.ceil(tensor.size / elemenet_per_packet)
         current_node_id = self.options['node_id']
+
         # 等待节点进入接收状态
         node.send_barrier(tensor_id)
 
@@ -75,29 +80,68 @@ class Node:
             pkt.set_header(
                 flow_control=0,
                 tensor_id=tensor_id,  # uint32
-                packet_num=i,  # uint32
+                segment_id=i,  # uint32
                 node_id=current_node_id,  # uint16
                 aggregate_num=1,         # uint16
                 ucast_grp=group_id,             # uint32
                 data_type=packet.DataType.INT32.value,  # uint8
+                pool_id=i % switch_pool_size
             )
             pkt.set_tensor(tensor[offset: offset+elemenet_per_packet])
-            pkt.deparse_buffer()
+            pkt.deparse_header()
+            pkt.deparse_payload()
             packet_list.append(pkt)
         prepare_packet_end = time.time()
 
-        threads = []
-        for i in range(switch_pool_size):
-            t = threading.Thread(target=self.__send_to_pool,
-                                 args=[node, i, packet_list])
-            t.start()
-            threads.append(t)
+        # 一次性发出发送窗口所有包
+        finish_cnt = 0
+        send_window = []
+        send_window_time = []
+        for i in range(min(switch_pool_size, total_packet_num)):
+            send_window.append(packet_list[i])
+            send_window_time.append(time.time())
+            send_sock.sendto(send_window[i].buffer, dst_addr)
+
+        rtt = 0.01
+        rx_pkt = Packet()
         send_start = time.time()
-        for t in threads:
-            t.join()
+
+        while finish_cnt != total_packet_num:
+            send_sock.settimeout(rtt)
+            try:
+                send_sock.recv_into(rx_pkt.buffer)
+                rx_pkt.parse_header()
+                if rx_pkt.ack:
+                    if rx_pkt.tensor_id == send_window[rx_pkt.pool_id].tensor_id and rx_pkt.segment_id == send_window[rx_pkt.pool_id].segment_id:
+                        next_pkt_segment_for_this_slot = send_window[rx_pkt.pool_id].segment_id + switch_pool_size
+                        finish_cnt += 1
+                        # 尝试发出这个窗口下一个包
+                        if next_pkt_segment_for_this_slot < total_packet_num:
+                            send_window[rx_pkt.pool_id] = packet_list[next_pkt_segment_for_this_slot]
+                            send_window_time[rx_pkt.pool_id] = time.time()
+                            send_sock.sendto(send_window[rx_pkt.pool_id].buffer, dst_addr)
+                if rx_pkt.ecn:
+                    # TODO: 如果支持多任务，需要添加 ecn
+                    pass
+            except:
+                # 找出超时的包重发
+                now = time.time()
+                for i in range(len(send_window)):
+                    if now - send_window_time[i] > rtt:
+                        send_window[i].flow_control |= retranmission_bitmap
+                        send_window[i].deparse_header()
+                        send_window_time[i] = now
+                        try:
+                            send_sock.sendto(send_window[i].buffer, dst_addr)
+                        except:
+                            pass
         send_end = time.time()
-        print("构建包耗时 %f 发送耗时 %f 速率 %f MB/s" % (prepare_packet_end - prepare_packet_start,
-              send_end - send_start, tensor.size * 4 / 1024 / 1024 / (send_end - send_start)))
+
+        print("构建包耗时 %f 发送耗时 %f 发送速率 %f Mbps 综合速率 %f Mbps" % (
+            prepare_packet_end - prepare_packet_start,
+              send_end - send_start,
+              tensor.size * 4 / 1024 / 1024 * 8 / (send_end - send_start),
+              tensor.size * 4 / 1024 / 1024 * 8 / (send_end - send_start + prepare_packet_end - prepare_packet_start)))
 
         # TODO: 等待对方完成接收（如果 node 是 switch 则等待 switch 下面所有节点接收完成）
         # 暂时 switch 没有支持可靠传输，所以这里需要端到端检查丢包情况
@@ -106,48 +150,15 @@ class Node:
 
         return
 
-    def __send_to_pool(self, node, pool_index, packet_list):
-        # type: (Node, int, list)->None
-        # 每个线程分配一个 socket，避免内核 socket 锁争用
-        dst_addr = (node.options['ip_addr'], node.options['port'])
-        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        send_sock.bind((self.options["ip_addr"], 0))
-        rtt = 0.01  # init 10 ms
-
-        rx_pkt = Packet()
-        
-        for i in range(int(len(packet_list) / switch_pool_size)):
-            current_packet_num = i * switch_pool_size + pool_index
-            tx_pkt: Packet = packet_list[current_packet_num]
-            rtt = max(rtt, 0.001)
-            send_sock.settimeout(rtt)
-            while True:
-                try:
-                    start = time.time()
-                    send_sock.sendto(tx_pkt.buffer, dst_addr)
-                    send_sock.recv_into(rx_pkt.buffer)
-                    rx_pkt.parse_buffer()
-                    end = time.time()
-                    rtt = (end - start) * 1.3 # 避免过多重传
-                    if rx_pkt.ack and rx_pkt.packet_num == tx_pkt.packet_num:  # 可能接收到旧的返回值
-                        break
-                    if rx_pkt.ecn:
-                        rtt *= 2
-                        time.sleep(rtt)
-                        continue
-                except:
-                    # timeout
-                    rtt *= 1.3
-        send_sock.close()
-
     def receive_thread(self) -> None:
         pkt = Packet()
         while True:
             _, client = self.rx_socket.recvfrom_into(pkt.buffer, pkt_size)
-            pkt.parse_buffer()
+            pkt.parse_header()
             if pkt.ack or pkt.ecn:
                 # TODO
                 continue
+            pkt.parse_payload()
             key: tuple = (pkt.tensor_id, pkt.node_id)
             job = self.rx_jobs.get(key)
             if job is None:

@@ -22,6 +22,6 @@ class Job:
         self._lock.release()
 
     def handle_packet(self, pkt: Packet):
-        offser = pkt.packet_num * elemenet_per_packet
+        offser = pkt.segment_id * elemenet_per_packet
         self.tensor[offser: offser + elemenet_per_packet] = pkt.tensor
         self.bitmap[int(offser / elemenet_per_packet)] = 1
