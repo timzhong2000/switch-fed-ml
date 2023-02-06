@@ -30,12 +30,13 @@ pkt_size = elemenet_per_packet * 4 + header_size
 
 
 # flow control
-# |  0  |  1  |   2    |        3       | 4 | 5 | 6 | 7 |
-# | ack | ecn | bypass | retransmission |   |   |   |   |
+# |  0  |  1  |   2    |     3     |       4        | 5 | 6 | 7 |
+# | ack | ecn | bypass | multicast | retranmission  |   |   |   |
 ack_bitmap = 1 << 0
 ecn_bitmap = 1 << 1
 bypass_bitmap = 1 << 2
-retranmission_bitmap = 1 << 3
+multicast_bitmap = 1 << 3
+retranmission_bitmap = 1 << 4
 
 
 class Packet:
