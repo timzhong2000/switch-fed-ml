@@ -102,7 +102,7 @@ class Node:
             send_window_time.append(time.time())
             send_sock.sendto(send_window[i].buffer, dst_addr)
 
-        rtt = 0.01
+        rtt = 0.001
         rx_pkt = Packet()
         send_start = time.time()
 
@@ -113,11 +113,11 @@ class Node:
                 rx_pkt.parse_header()
                 if rx_pkt.ack:
                     if rx_pkt.tensor_id == send_window[rx_pkt.pool_id].tensor_id and rx_pkt.segment_id == send_window[rx_pkt.pool_id].segment_id:
-                        next_pkt_segment_for_this_slot = send_window[rx_pkt.pool_id].segment_id + switch_pool_size
+                        next_packet_segment_id = send_window[rx_pkt.pool_id].segment_id + switch_pool_size
                         finish_cnt += 1
                         # 尝试发出这个窗口下一个包
-                        if next_pkt_segment_for_this_slot < total_packet_num:
-                            send_window[rx_pkt.pool_id] = packet_list[next_pkt_segment_for_this_slot]
+                        if next_packet_segment_id < total_packet_num:
+                            send_window[rx_pkt.pool_id] = packet_list[next_packet_segment_id]
                             send_window_time[rx_pkt.pool_id] = time.time()
                             send_sock.sendto(send_window[rx_pkt.pool_id].buffer, dst_addr)
                 if rx_pkt.ecn:
