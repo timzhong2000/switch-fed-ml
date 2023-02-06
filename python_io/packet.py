@@ -16,7 +16,7 @@ class DataType(Enum):
 # segment_id    uint32
 # node_id       uint16
 # aggregate_num uint16
-# ucast_grp     uint16
+# mcast_grp     uint16
 # pool_id       uint16
 
 header_format = ">BBIIHHHH"
@@ -49,7 +49,7 @@ class Packet:
         self.segment_id = 0
         self.node_id = 0
         self.aggregate_num = 0
-        self.ucast_grp = 0
+        self.mcast_grp = 0
         self.pool_id = 0
 
         # flow control
@@ -59,13 +59,13 @@ class Packet:
 
         self.tensor: typing.Union[np.ndarray, None] = None
 
-    def set_header(self, flow_control: int, data_type: int, tensor_id: int, segment_id: int, node_id: int, aggregate_num: int, ucast_grp: int, pool_id: int):
+    def set_header(self, flow_control: int, data_type: int, tensor_id: int, segment_id: int, node_id: int, aggregate_num: int, mcast_grp: int, pool_id: int):
         self.flow_control = flow_control
         self.tensor_id = tensor_id
         self.segment_id = segment_id
         self.node_id = node_id
         self.aggregate_num = aggregate_num
-        self.ucast_grp = ucast_grp
+        self.mcast_grp = mcast_grp
         self.data_type = data_type
         self.ecn = flow_control & ecn_bitmap
         self.bypass = flow_control & bypass_bitmap
@@ -79,14 +79,14 @@ class Packet:
     def parse_header(self):
         header_val = struct.unpack_from(header_format, self.buffer)
         self.set_header(
-            header_val[0],
-            header_val[1],
-            header_val[2],
-            header_val[3],
-            header_val[4],
-            header_val[5],
-            header_val[6],
-            header_val[7],
+            flow_control=header_val[0],
+            data_type=header_val[1],
+            tensor_id=header_val[2],
+            segment_id=header_val[3],
+            node_id=header_val[4],
+            aggregate_num=header_val[5],
+            mcast_grp=header_val[6],
+            pool_id=header_val[7],
         )
         return
 
@@ -111,7 +111,7 @@ class Packet:
             self.segment_id,
             self.node_id,
             self.aggregate_num,
-            self.ucast_grp,
+            self.mcast_grp,
             self.pool_id
         )
         return
@@ -129,6 +129,6 @@ class Packet:
             self.segment_id,
             self.node_id,
             self.aggregate_num,
-            self.ucast_grp,
+            self.mcast_grp,
             self.pool_id,
         )

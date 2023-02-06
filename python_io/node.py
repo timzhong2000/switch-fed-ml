@@ -17,10 +17,11 @@ add_delay_ms = 10
 
 
 class Node:
-    def __init__(self, ip_addr: str, port: int, rpc_port: int, node_id: int, is_remote_node: bool):
+    def __init__(self, ip_addr: str, rx_port: int, tx_port:int, rpc_port: int, node_id: int, is_remote_node: bool):
         self.options = {
             "ip_addr": ip_addr,
-            "port": port,
+            "rx_port": rx_port,
+            "tx_port": tx_port,
             "rpc_port": rpc_port,
             "node_id": node_id,
             "groups": set([0]),  # 所在的分组
@@ -37,9 +38,9 @@ class Node:
         if not is_remote_node:
             self.rx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.rx_socket.bind(
-                (self.options['ip_addr'], self.options['port']))
+                (self.options['ip_addr'], self.options['rx_port']))
             print("成功监听数据端口 %s:%d" %
-                  (self.options['ip_addr'], self.options['port']))
+                  (self.options['ip_addr'], self.options['rx_port']))
             self.__receive_thread = threading.Thread(
                 target=self.receive_thread)
             self.__receive_thread.start()
@@ -65,7 +66,7 @@ class Node:
         # type: (Node, int, int, np.ndarray)->int
         dst_addr = (node.options['ip_addr'], node.options['port'])
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+        send_sock.bind(self.options['ip_addr'], self.options['tx_port'])
         total_packet_num = math.ceil(tensor.size / elemenet_per_packet)
         current_node_id = self.options['node_id']
 
@@ -79,12 +80,12 @@ class Node:
             offset = i * elemenet_per_packet
             pkt.set_header(
                 flow_control=0,
+                data_type=packet.DataType.INT32.value,  # uint8
                 tensor_id=tensor_id,  # uint32
                 segment_id=i,  # uint32
                 node_id=current_node_id,  # uint16
                 aggregate_num=1,         # uint16
-                ucast_grp=group_id,             # uint32
-                data_type=packet.DataType.INT32.value,  # uint8
+                mcast_grp=group_id,             # uint32
                 pool_id=i % switch_pool_size
             )
             pkt.set_tensor(tensor[offset: offset+elemenet_per_packet])
@@ -155,9 +156,6 @@ class Node:
         while True:
             _, client = self.rx_socket.recvfrom_into(pkt.buffer, pkt_size)
             pkt.parse_header()
-            if pkt.ack or pkt.ecn:
-                # TODO
-                continue
             pkt.parse_payload()
             key: tuple = (pkt.tensor_id, pkt.node_id)
             job = self.rx_jobs.get(key)
