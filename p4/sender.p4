@@ -47,6 +47,8 @@ control Sender(
     mark_to_drop(standard_meta);
   }
 
+  action no_action() {}
+
   // <egress_rid, tensor_id> 唯一确认了一个包的目的地
   table egress_rid_to_worker_address {
     key = {
