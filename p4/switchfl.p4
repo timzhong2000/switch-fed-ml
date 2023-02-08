@@ -2,6 +2,7 @@
 #define _SWITCH_FL_MAIN
 
 #define DEBUG
+#define POOL_SIZE 128
 
 #include <core.p4>
 #include <v1model.p4>
@@ -73,8 +74,8 @@ control MyIngress(
     inout metadata_t meta,
     inout standard_metadata_t standard_meta)
 {
-
-    Processor() processor0;
+    Receiver() switchfl_receiver;
+    Processor() processor;
 
     bool dropped = false;
 
@@ -111,8 +112,13 @@ control MyIngress(
         if(hdr.ipv4.isValid()) {
             ipv4_match.apply();
         }
+
         if(hdr.switchfl.isValid()) {
-            processor0.apply(hdr.switchfl, meta, hdr.tensor0);
+            switchfl_receiver.apply(hdr, meta, standard_meta);
+            processor.apply(hdr, meta);
+            if(meta.processor_action == Processor_Action.DROP) {
+                drop_action();
+            }
         }
         if (dropped) return;
     }

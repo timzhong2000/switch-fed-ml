@@ -1,6 +1,8 @@
 #ifndef _SWITCH_FL_RECEIVER
 #define _SWITCH_FL_RECEIVER
 
+#define DEBUG
+
 #include "type.p4"
 
 control Receiver(
@@ -14,7 +16,7 @@ control Receiver(
   }
 
   // group config start
-  action set_group_config(AggregateNum_t total_aggregate_num, bit<32> aggregate_finish_bitmap){
+  action set_group_config(AggregateNum_t total_aggregate_num, bit<32> aggregate_finish_bitmap) {
     meta.total_aggregate_num = total_aggregate_num;
     meta.aggregate_finish_bitmap = aggregate_finish_bitmap;
   }
@@ -37,7 +39,7 @@ control Receiver(
       (3): set_group_config(3, 0x0007); // node_id = 1 & 2 & 3
     }
     #endif
-    default_action = drop;
+    const default_action = drop;
   }
   // group config end
 
@@ -52,8 +54,8 @@ control Receiver(
       hdr.switchfl.node_id: exact;
     }
     actions = {
-      drop;
       set_bitmap;
+      drop;
     }
 
     #ifndef DEBUG
@@ -66,7 +68,7 @@ control Receiver(
     }
     #endif
     
-    default_action = drop;
+    const default_action = drop;
   }
   // bitmap end
 

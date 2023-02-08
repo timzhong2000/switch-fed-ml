@@ -17,8 +17,9 @@ const bit<16> SwitchFL_PORT = 50000;
 enum bit<8> Processor_Action {
   ECN = 1,
   DROP = 2,
-  MCAST = 3, // 聚合器释放时发送给 ps 并且广播 ack
-  ACK = 4 // 单播 ack
+  MCAST = 3, // 下发模型
+  ACK = 4, // 单播 ack
+  FINISH = 5 // 聚合器释放时发送给 ps 并且广播 ack
 }
 
 
