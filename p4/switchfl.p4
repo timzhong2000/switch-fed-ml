@@ -11,11 +11,6 @@
 #include "processor.p4"
 #include "sender.p4"
 
-// error {
-//     IPv4IncorrectVersion,
-//     IPv4OptionsNotSupported
-//}
-
 parser MyIngressParser(
     packet_in pkt,
     out headers_t hdr,
@@ -77,17 +72,28 @@ control MyIngress(
     Receiver() switchfl_receiver;
     Processor() processor;
 
-    bool dropped = false;
-
     action drop_action() {
         mark_to_drop(standard_meta);
-        dropped = true;
     }
 
     action to_port_action(bit<9> port) {
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
         standard_meta.egress_spec = port;
     }
+
+    action switchfl_send_back_action() {
+        standard_meta.egress_spec = standard_meta.ingress_port;
+        standard_meta.egress_port = standard_meta.ingress_port;
+    }
+
+    action switchfl_multicast_action() {
+        standard_meta.mcast_grp = hdr.switchfl.mcast_grp;
+        standard_meta.egress_spec = 0;
+        standard_meta.egress_port = 0;
+    }
+
+    // 不可能进入的分支
+    action switchfl_error_catch_action() {}
 
     table ipv4_match {
         key = {
@@ -101,26 +107,30 @@ control MyIngress(
         size = 128;
         #else
         const entries = {
-            (0x0a0a0000 &&& 0xffff0000) : to_port_action(0); // 10.10.0.0 => port 0  
-            (0x0b0b0000 &&& 0xffff0000) : to_port_action(1); // 11.11.0.0 => port 1
+            (0x0b0b0b01) : to_port_action(0); // 11.11.11.1 => port 0
+            (0x0b0b0b02) : to_port_action(1); // 11.11.11.2 => port 1
+            (0x0b0b0b03) : to_port_action(2); // 11.11.11.3 => port 2
         }
         #endif
         default_action = drop_action;
     }
 
     apply {
-        if(hdr.ipv4.isValid()) {
-            ipv4_match.apply();
-        }
-
-        if(hdr.switchfl.isValid()) {
+        if(hdr.switchfl.isValid() && hdr.switchfl.bypass == 0) {
             switchfl_receiver.apply(hdr, meta, standard_meta);
             processor.apply(hdr, meta);
             if(meta.processor_action == Processor_Action.DROP) {
                 drop_action();
+            } else if (meta.processor_action == Processor_Action.ECN || meta.processor_action == Processor_Action.ACK) {
+                switchfl_send_back_action();
+            } else if (meta.processor_action == Processor_Action.MCAST || meta.processor_action == Processor_Action.FINISH) {
+                switchfl_multicast_action();
+            } else {
+                switchfl_error_catch_action();
             }
+        } else {
+            ipv4_match.apply();
         }
-        if (dropped) return;
     }
 }
 
@@ -129,7 +139,65 @@ control MyEgress(
     inout metadata_t meta,
     inout standard_metadata_t standard_meta)
 {
-    apply { }
+    Sender() switchfl_sender;
+
+    action set_tensor_invalid() {
+        hdr.tensor0.setInvalid();
+        hdr.tensor1.setInvalid();
+        hdr.tensor2.setInvalid();
+        hdr.tensor3.setInvalid();
+        hdr.tensor4.setInvalid();
+        hdr.tensor5.setInvalid();
+        hdr.tensor6.setInvalid();
+        hdr.tensor7.setInvalid();
+        hdr.ipv4.total_len = hdr.ipv4.total_len - 1024;
+        hdr.udp.length = hdr.udp.length - 1024;
+    }
+
+    action switchfl_mark_to_emit_payload() {
+        // do nothing
+    }
+
+    action switchfl_mark_to_ack() {
+        hdr.switchfl.ack = 1;
+        set_tensor_invalid();
+    }
+
+    action switchfl_mark_to_ecn() {
+        hdr.switchfl.ecn = 1;
+        set_tensor_invalid();
+    }
+
+    action switchfl_mark_to_drop() {
+        mark_to_drop(standard_meta);
+        set_tensor_invalid();
+    }
+
+    apply {
+        if(hdr.switchfl.isValid() && hdr.switchfl.bypass == 0) {
+            switchfl_sender.apply(hdr, meta, standard_meta);
+            // 约定 egress_rid == 9999 为向 ps 发送的标记
+            if(meta.processor_action == Processor_Action.FINISH) {
+                if(meta.is_ps) {
+                    switchfl_mark_to_emit_payload();
+                } else {
+                    switchfl_mark_to_ack();
+                }
+            } else if(meta.processor_action == Processor_Action.MCAST) {
+                if(meta.is_ps) {
+                    switchfl_mark_to_drop();
+                } else {
+                    switchfl_mark_to_emit_payload();
+                }
+            } else if(meta.processor_action == Processor_Action.ECN) {
+                switchfl_mark_to_ecn();
+            } else if(meta.processor_action == Processor_Action.ACK) {
+                switchfl_mark_to_ack();
+            } else if(meta.processor_action == Processor_Action.DROP) {
+                switchfl_mark_to_drop();
+            }
+        }
+    }
 }
 
 control MyComputeChecksum(
@@ -153,6 +221,16 @@ control MyComputeChecksum(
                 hdr.ipv4.dst_addr
             },
             hdr.ipv4.hdr_checksum,
+            HashAlgorithm.csum16
+        );
+        update_checksum(
+            hdr.udp.isValid(),
+            {
+                hdr.udp.src_port,
+                hdr.udp.dst_port,
+                hdr.udp.length
+            },
+            hdr.udp.checksum,
             HashAlgorithm.csum16
         );
     }

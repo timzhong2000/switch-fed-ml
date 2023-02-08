@@ -10,6 +10,7 @@ typedef bit<32> Data_t;
 typedef bit<16> PoolId_t;
 typedef bit<32> WorkerBitmap_t;
 typedef bit<16> AggregateNum_t; // 聚合数
+typedef bit<16> NodeId_t;
 
 const bit<16> SwitchFL_PORT = 50000;
 
@@ -24,7 +25,8 @@ enum bit<8> Processor_Action {
 
 
 struct metadata_t {
-  /// 从 recevier 模块读取
+  
+  ///           ingress               ///
 
   // 用于忽略重传包
   WorkerBitmap_t bitmap;
@@ -38,7 +40,8 @@ struct metadata_t {
   // process 判断包发送行为
   Processor_Action processor_action;
 
-  bool has_payload; // 对于 ack 包不需要携带 payload
+  ///              egress              ///
+  bool is_ps; 
 }
 
 header ethernet_h {
@@ -84,7 +87,7 @@ header switchfl_h {
   bit<8>              data_type;
   TensorId_t          tensor_id;      // 32bit
   SegmentId_t         segment_id;     // 32bit
-  bit<16>             node_id;
+  NodeId_t            node_id;
   AggregateNum_t      aggregate_num;  // 16bit
   MulticastGroupId_t  mcast_grp;      // 16bit
   PoolId_t            pool_id;        // 16bit
