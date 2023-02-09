@@ -117,8 +117,13 @@ control MyIngress(
 
     apply {
         if(hdr.switchfl.isValid() && hdr.switchfl.bypass == 0) {
-            switchfl_receiver.apply(hdr, meta, standard_meta);
-            processor.apply(hdr, meta);
+            if (hdr.switchfl.multicast == 0) {
+                // multicast == 0 说明包不是来自 ps 的
+                switchfl_receiver.apply(hdr, meta, standard_meta);
+                processor.apply(hdr, meta);
+            } else {
+                meta.processor_action = Processor_Action.MCAST;
+            }
             if(meta.processor_action == Processor_Action.DROP) {
                 drop_action();
             } else if (meta.processor_action == Processor_Action.ECN || meta.processor_action == Processor_Action.ACK) {

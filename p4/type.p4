@@ -23,7 +23,6 @@ enum bit<8> Processor_Action {
   FINISH = 5 // 聚合器释放时发送给 ps 并且广播 ack
 }
 
-
 struct metadata_t {
   
   ///           ingress               ///
