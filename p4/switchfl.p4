@@ -190,7 +190,7 @@ control MyEgress(
                 }
             } else if(meta.processor_action == Processor_Action.MCAST) {
                 if(meta.is_ps) {
-                    switchfl_mark_to_drop();
+                    switchfl_mark_to_ack();
                 } else {
                     switchfl_mark_to_emit_payload();
                 }
