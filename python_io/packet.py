@@ -32,11 +32,11 @@ pkt_size = elemenet_per_packet * 4 + header_size
 # flow control
 # |  0  |  1  |   2    |     3     |       4        | 5 | 6 | 7 |
 # | ack | ecn | bypass | multicast | retranmission  |   |   |   |
-ack_bitmap = 1 << 0
-ecn_bitmap = 1 << 1
-bypass_bitmap = 1 << 2
-multicast_bitmap = 1 << 3
-retranmission_bitmap = 1 << 4
+ack_bitmap = 1 << 7
+ecn_bitmap = 1 << 6
+bypass_bitmap = 1 << 5
+multicast_bitmap = 1 << 4
+retranmission_bitmap = 1 << 3
 
 
 class Packet:
@@ -123,7 +123,7 @@ class Packet:
     def gen_ack_packet(self):
         return struct.pack(
             header_format,
-            self.flow_control | ack_bitmap,
+            self.flow_control | ack_bitmap | bypass_bitmap,
             self.data_type,
             self.tensor_id,
             self.segment_id,

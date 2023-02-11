@@ -8,6 +8,25 @@ pkt.set_header(
   data_type=0,
   tensor_id=100,
   segment_id=0,
+  node_id=1,
+  aggregate_num=1,
+  mcast_grp=2,
+  pool_id=0
+)
+pkt.set_tensor(np.ones((256), dtype=np.int32))
+pkt.deparse_header()
+pkt.deparse_payload()
+p = Ether()/IP(src="11.11.11.1", dst="11.11.11.3")/UDP(sport=50001, dport=50000)/str(pkt.buffer, encoding="utf8")
+sendp(p, iface="veth1")
+
+time.sleep(1)
+
+pkt = Packet()
+pkt.set_header(
+  flow_control=0,
+  data_type=0,
+  tensor_id=100,
+  segment_id=0,
   node_id=2,
   aggregate_num=1,
   mcast_grp=2,
@@ -16,14 +35,15 @@ pkt.set_header(
 pkt.set_tensor(np.ones((256), dtype=np.int32))
 pkt.deparse_header()
 pkt.deparse_payload()
-p = Ether()/IP(src="11.11.11.1", dst="11.11.1.3")/UDP(dport=50000)/str(pkt.buffer, encoding="utf8")
-sendp(p, iface="veth1")
+p = Ether()/IP(src="11.11.11.2", dst="11.11.11.3")/UDP(sport=50001,dport=50000)/str(pkt.buffer, encoding="utf8")
+sendp(p, iface="veth3")
 
-time.sleep(1)
+
+time.sleep(3)
 
 pkt = Packet()
 pkt.set_header(
-  flow_control=0,
+  flow_control=0 | multicast_bitmap,
   data_type=0,
   tensor_id=100,
   segment_id=0,
@@ -35,5 +55,5 @@ pkt.set_header(
 pkt.set_tensor(np.ones((256), dtype=np.int32))
 pkt.deparse_header()
 pkt.deparse_payload()
-p = Ether()/IP(src="11.11.11.1", dst="11.11.1.3")/UDP(dport=50000)/str(pkt.buffer, encoding="utf8")
-sendp(p, iface="veth1")
+p = Ether()/IP(src="11.11.11.3", dst="11.11.11.0")/UDP(sport=50001, dport=50000)/str(pkt.buffer, encoding="utf8")
+sendp(p, iface="veth5")

@@ -15,6 +15,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         self.node = node
 
     def SendBarrier(self, request, context):
+        # TODO
         return Empty()
 
     def Retransmission(self, request: Retransmission.Request, context):
