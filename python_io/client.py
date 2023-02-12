@@ -6,8 +6,8 @@ import time
 import socket
 
 class Client(Node):
-    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool):
-        super().__init__(ip_addr, rx_port, tx_port, rpc_port, node_id, is_remote_node)
+    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, iface: str = ""):
+        super().__init__(ip_addr, rx_port, tx_port, rpc_port, node_id, is_remote_node, iface)
         self.type = "client"
 
     # tensor 长度需要被 elemenet_per_packet 整除
@@ -70,7 +70,7 @@ class Client(Node):
     def receive_thread(self) -> None:
         pkt = Packet()
         while True:
-            _, client = self.rx_socket.recvfrom_into(pkt.buffer, pkt_size)
+            _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
             pkt.parse_header()
             pkt.parse_payload()
             key: tuple = (pkt.tensor_id, pkt.node_id)

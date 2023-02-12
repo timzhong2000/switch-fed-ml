@@ -15,7 +15,7 @@ add_delay_ms = 10
 
 
 class Node:
-    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, group_id: int = 10):
+    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, iface: str, group_id: int = 10):
         self.options = {
             "ip_addr": ip_addr,
             "rx_port": rx_port,
@@ -27,19 +27,21 @@ class Node:
         }
         self.type = "node"
         self.children: dict[int, Node] = {}
+        self.iface = iface
 
         self.rx_jobs: dict[(int, int), Job] = {}
         self.rx_jobs_lock = threading.Lock()
 
-        self.rpc_stub: typing.Union[SwitchmlIOStub, None] = None
-        self.rpc_server: typing.Union[GrpcServer, None] = None
-        self.rx_socket: typing.Union[socket.socket, None] = None
+        self.rpc_stub: typing.Optional[SwitchmlIOStub] = None
+        self.rpc_server: typing.Optional[GrpcServer] = None
+        self.rx_sock: typing.Optional[socket.socket] = None
+        self.tx_sock: typing.Optional[socket.socket] = None
 
         if not is_remote_node:
-            self.rx_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.rx_socket.bind(
+            self.rx_sock = self._create_udp_socket()
+            self.rx_sock.bind(
                 (self.options['ip_addr'], self.options['rx_port']))
-            self.tx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.tx_sock = self._create_udp_socket()
             self.tx_sock.bind((self.options['ip_addr'], self.options['tx_port']))
             print("成功监听数据端口 %s:%d" %
                   (self.options['ip_addr'], self.options['rx_port']))
@@ -53,10 +55,19 @@ class Node:
         else:
             self._init_as_remote_node()
 
+    def _create_udp_socket(self) -> socket.socket:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self.iface.encode())
+        return sock
+
     # stop the server
     def _close(self):
         print("grpc 服务正在关闭")
         self.rpc_server.stop()
+        if self.tx_sock is not None:
+            self.tx_sock.close()
+        if self.rx_sock is not None:
+            self.rx_sock.close()
 
     def _init_as_remote_node(self):
         addr = "%s:%d" % (self.options['ip_addr'], self.options['rpc_port'])

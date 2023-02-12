@@ -8,8 +8,8 @@ from node import Node
 
 class Server(Node):
 
-    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool):
-        super().__init__(ip_addr, rx_port, tx_port, rpc_port, node_id, is_remote_node)
+    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, iface: str = ""):
+        super().__init__(ip_addr, rx_port, tx_port, rpc_port, node_id, is_remote_node, iface)
         self.type = "server"
 
     def close(self):
@@ -55,7 +55,7 @@ class Server(Node):
     
     # 下发不检测丢包
     def send(self, node: Node, group_id: int, tensor_id: int, tensor: np.ndarray):
-        packet_list = self._create_packets(group_id, tensor_id, tensor) # TODO: 如果是 switch，添加 multicast
+        packet_list = self._create_packets(group_id, tensor_id, tensor, 0 | multicast_bitmap) # TODO: 如果是 switch，添加 multicast
 
         send_start = time.time()
         server_addr = (node.options['ip_addr'], node.options['rx_port'])
@@ -82,7 +82,7 @@ class Server(Node):
     def receive_thread(self) -> None:
         pkt = Packet()
         while True:
-            _, client = self.rx_socket.recvfrom_into(pkt.buffer, pkt_size)
+            _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
             pkt.parse_header()
             pkt.parse_payload()
             key: tuple = (pkt.tensor_id, pkt.node_id)
@@ -90,7 +90,7 @@ class Server(Node):
             if job is None:
                 continue
             job.handle_packet(pkt)
-            self.rx_socket.sendto(pkt.gen_ack_packet(), client)
+            self.rx_sock.sendto(pkt.gen_ack_packet(), client)
 
     def get_node_list_by_group_id(self, group_id: int):
         # TODO

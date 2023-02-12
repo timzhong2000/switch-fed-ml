@@ -6,15 +6,15 @@ from multiprocessing import Process
 
 def client_send():
     server = Server("127.0.0.1", 50000, 50001, 50002, 3, True)
-    client = Client('127.0.0.1', 50003, 50004, 50004, 1, False)
-    tensor = np.ones((10 * 1024 * 256), dtype=np.int32)
+    client = Client('127.0.0.1', 50003, 50004, 50004, 1, False, "lo")
+    tensor = np.ones((256), dtype=np.int32)
     client.send(server, 2, 123, tensor, False)
 
 
 def server_receive():
-    server = Server("127.0.0.1", 50000, 50001, 50002, 3, False)
+    server = Server("127.0.0.1", 50000, 50001, 50002, 3, False, "lo")
     client = Client('127.0.0.1', 50003, 50004, 50004, 1, True)
-    tensor = np.zeros((10 * 1024 * 256), dtype=np.int32)
+    tensor = np.zeros((256), dtype=np.int32)
     server.receive(client, 123, tensor)
 
 p1 = Process(target=server_receive)
