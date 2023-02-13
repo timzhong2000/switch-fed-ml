@@ -6,7 +6,7 @@ pkt = Packet()
 pkt.set_header(
   flow_control=0,
   data_type=0,
-  tensor_id=100,
+  tensor_id=123,
   segment_id=0,
   node_id=1,
   aggregate_num=1,

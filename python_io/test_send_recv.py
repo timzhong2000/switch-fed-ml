@@ -4,7 +4,7 @@ import numpy as np
 import time
 from multiprocessing import Process
 
-tensor_size = 256 * 1024 * 10
+tensor_size = 256 * 1024
 
 def client_send():
     server = Server("127.0.0.1", 50000, 50001, 50002, 3, True)
