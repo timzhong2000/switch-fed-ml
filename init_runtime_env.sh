@@ -1,5 +1,5 @@
-sudo sysctl net.ipv4.conf.all.rp_filter=0
-sudo sysctl net.ipv4.conf.default.rp_filter=0
+sudo sysctl -w net.ipv4.conf.all.rp_filter=0
+sudo sysctl -w net.ipv4.conf.default.rp_filter=0
 
 # Port0 11.11.11.1 connected to veth1
 sudo ip link add name veth0 type veth peer name veth1
@@ -11,6 +11,10 @@ sudo sysctl net.ipv6.conf.veth0.disable_ipv6=1
 sudo sysctl net.ipv6.conf.veth1.disable_ipv6=1
 sudo ip addr add 11.11.11.1/16 dev veth1
 sudo route add -net 11.11.0.0 netmask 255.255.0.0 dev veth1
+sudo sysctl -w net.ipv4.conf.veth0.rp_filter=0
+sudo sysctl -w net.ipv4.conf.veth1.rp_filter=0
+sudo sysctl -w net.ipv4.conf.veth0.accept_local=1
+sudo sysctl -w net.ipv4.conf.veth1.accept_local=1
 
 # Port1 11.11.11.2 connected to veth3
 sudo ip link add name veth2 type veth peer name veth3
