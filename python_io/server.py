@@ -6,6 +6,7 @@ import numpy as np
 import threading
 from node import Node
 
+
 class Server(Node):
 
     def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, iface: str = ""):
@@ -52,11 +53,11 @@ class Server(Node):
         for recv_tensor in tensors:
             tensor += recv_tensor
         return
-    
+
     # 下发不检测丢包
     def send(self, node: Node, group_id: int, tensor_id: int, tensor: np.ndarray):
-        packet_list = self._create_packets(group_id, tensor_id, tensor, 0 | multicast_bitmap) # TODO: 如果是 switch，添加 multicast
-
+        packet_list = self._create_packets(
+            group_id, tensor_id, tensor, multicast_bitmap if node.type == "switch" else bypass_bitmap)
         send_start = time.time()
         server_addr = (node.options['ip_addr'], node.options['rx_port'])
         total_packet_num = len(packet_list)
@@ -70,13 +71,11 @@ class Server(Node):
             send_end - send_start,
             elemenet_per_packet * total_packet_num * 4 / 1024 / 1024 * 8 / (send_end - send_start)))
 
-        if node.type=="switch":
+        if node.type == "switch":
             for client in node.children.values():
-                missing_slice = client.rpc_stub.ReadMissingSlice(tensor_id, self.options['node_id'])
-                client.rpc_stub.Retransmission(tensor_id, self.options['node_id'], {})
+                self.check_and_retransmit(client, tensor_id, packet_list)
         else:
-            missing_slice = node.rpc_stub.ReadMissingSlice(tensor_id, self.options['node_id'])
-            node.rpc_stub.Retransmission(tensor_id, self.options['node_id'], {})
+            self.check_and_retransmit(node, tensor_id, packet_list)
         return
 
     def receive_thread(self) -> None:

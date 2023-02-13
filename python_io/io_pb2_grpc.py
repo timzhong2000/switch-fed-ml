@@ -14,11 +14,6 @@ class SwitchmlIOStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SendBarrier = channel.unary_unary(
-                '/SwitchmlIO/SendBarrier',
-                request_serializer=io__pb2.Sync.SendBarrierRequest.SerializeToString,
-                response_deserializer=io__pb2.Null.FromString,
-                )
         self.Retransmission = channel.unary_unary(
                 '/SwitchmlIO/Retransmission',
                 request_serializer=io__pb2.Retransmission.Request.SerializeToString,
@@ -33,13 +28,6 @@ class SwitchmlIOStub(object):
 
 class SwitchmlIOServicer(object):
     """Missing associated documentation comment in .proto file."""
-
-    def SendBarrier(self, request, context):
-        """检查当前节点是否存在准备好接收，如果没有就阻塞直到可以发送
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
 
     def Retransmission(self, request, context):
         """发送方重传特定片段，然后接收方完成接收任务
@@ -58,11 +46,6 @@ class SwitchmlIOServicer(object):
 
 def add_SwitchmlIOServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SendBarrier': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendBarrier,
-                    request_deserializer=io__pb2.Sync.SendBarrierRequest.FromString,
-                    response_serializer=io__pb2.Null.SerializeToString,
-            ),
             'Retransmission': grpc.unary_unary_rpc_method_handler(
                     servicer.Retransmission,
                     request_deserializer=io__pb2.Retransmission.Request.FromString,
@@ -82,23 +65,6 @@ def add_SwitchmlIOServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class SwitchmlIO(object):
     """Missing associated documentation comment in .proto file."""
-
-    @staticmethod
-    def SendBarrier(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/SwitchmlIO/SendBarrier',
-            io__pb2.Sync.SendBarrierRequest.SerializeToString,
-            io__pb2.Null.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def Retransmission(request,

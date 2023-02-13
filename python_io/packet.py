@@ -40,8 +40,8 @@ retranmission_bitmap = 1 << 3
 
 
 class Packet:
-    def __init__(self) -> None:
-        self.buffer = bytearray(pkt_size)
+    def __init__(self, buffer: bytearray = None) -> None:
+        self.buffer = buffer if buffer is not None else bytearray(pkt_size)
 
         self.flow_control = 0
         self.data_type = DataType.INT32.value

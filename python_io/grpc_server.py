@@ -6,7 +6,7 @@ import numpy as np
 import grpc
 import io_pb2_grpc
 import threading
-from packet import elemenet_per_packet
+from packet import *
 
 
 class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
@@ -20,12 +20,12 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
 
     def Retransmission(self, request: Retransmission.Request, context):
         job = self.node.rx_jobs.get((request.tensor_id, request.node_id))
-        for slice in request.data.items():
-            packet_num, data = slice
-            offset = packet_num * elemenet_per_packet
-            job.tensor[offset: offset +
-                       elemenet_per_packet] = np.frombuffer(data, dtype=np.int32)
-            job.bitmap[int(offset / elemenet_per_packet)] = 1
+        pkt = Packet()
+        for slice in request.data:
+            pkt.buffer = slice
+            pkt.parse_header()
+            pkt.parse_payload()
+            job.handle_packet(pkt)
         job.finish()
         return Empty()
 

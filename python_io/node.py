@@ -156,12 +156,15 @@ class Node:
             )
         )
 
-    # 等待这个节点进入接收状态
-    def send_barrier(self, tensor_id):
-        # type: (int) -> None
-        self.rpc_stub.SendBarrier(
-            Sync.SendBarrierRequest(
-                tensor_id=tensor_id,
-                node_id=self.options["node_id"]
-            )
-        )
+    def check_and_retransmit(self, node, tensor_id, packet_list):
+        #type: (Node, int, list)->int
+        retransmit_start = time.time()
+        missing_slice = node.rpc_stub.ReadMissingSlice(PacketLoss.Request(
+            tensor_id=tensor_id, node_id=self.options['node_id'])).missing_packet_list
+        payload = []
+        for segment_id in missing_slice:
+            payload.append(bytes(packet_list[segment_id].buffer))
+        node.rpc_stub.Retransmission(Retransmission.Request(
+            tensor_id=tensor_id, node_id=self.options['node_id'], data=payload))
+        retransmit_end = time.time()
+        return retransmit_end - retransmit_start

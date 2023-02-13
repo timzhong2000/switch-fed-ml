@@ -4,6 +4,7 @@ import threading
 import math
 from packet import elemenet_per_packet
 
+# 接收任务
 class Job:
     def __init__(self, key: tuple, tensor: np.ndarray, worker_number: int = 1):
         self.tensor = tensor
@@ -24,6 +25,6 @@ class Job:
         self._lock.release()
 
     def handle_packet(self, pkt: Packet):
-        offser = pkt.segment_id * elemenet_per_packet
-        self.tensor[offser: offser + elemenet_per_packet] = pkt.tensor
-        self.bitmap[int(offser / elemenet_per_packet)] = 1
+        offset = pkt.segment_id * elemenet_per_packet
+        self.tensor[offset: offset + elemenet_per_packet] += pkt.tensor
+        self.bitmap[int(offset / elemenet_per_packet)] += 1
