@@ -9,15 +9,19 @@ control Sender(
 )
 {
   action set_dest(
+    EthernetAddress src_mac,
+    EthernetAddress dst_mac,
     // ip
     IPv4Address src_addr,
     IPv4Address dst_addr,
     // udp
-    bit<16> dst_port, 
     bit<16> src_port,
+    bit<16> dst_port, 
     // switchfl
     NodeId_t node_id
   ) {
+    hdr.ethernet.src_addr = src_mac;
+    hdr.ethernet.dst_addr = dst_mac;
     hdr.ipv4.src_addr = src_addr;
     hdr.ipv4.dst_addr = dst_addr;
     hdr.udp.src_port = src_port;
@@ -54,14 +58,14 @@ control Sender(
     const size = 128;
     #else 
     const entries = {
-      //               src_addr,   dst_addr,   src_port, dst_port, node_id(of ps)
-      (0, 1): set_dest(0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    10);
+      //               src_mac,        dst_mac,        src_addr,   dst_addr,   src_port, dst_port, node_id(of ps)
+      (0, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    10);
       // 11.11.11.0:50000 (switch) => 11.11.11.1:50000 (client 1 rx_port)
 
-      (1, 1): set_dest(0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    10); 
+      (1, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    10); 
       // 11.11.11.0:50000 (switch) => 11.11.11.2:50000 (client 2 rx_port)
       
-      (2, 1): set_dest(0x0b0b0b00, 0x0b0b0b03, 50000,    50001,    10);
+      (2, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50001,    10);
       // 11.11.11.0:50000 (switch) => 11.11.11.3:50001 (PS tx_port)
     }
     #endif
@@ -85,14 +89,14 @@ control Sender(
     const size = 128;
     #else 
     const entries = {
-      //               src_addr,   dst_addr,   src_port, dst_port, node_id(of this switch)
-      (0, 1): set_dest(0x0b0b0b00, 0x0b0b0b01, 50000,    50001,    100); 
+      //               src_mac,        dst_mac,        src_addr,   dst_addr,   src_port, dst_port, node_id(of this switch)
+      (0, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b03, 0x0b0b0b01, 50000,    50001,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.1:50001 (client 1 tx_port)
 
-      (1, 1): set_dest(0x0b0b0b00, 0x0b0b0b02, 50000,    50001,    100); 
+      (1, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b03, 0x0b0b0b02, 50000,    50001,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.2:50001 (client 2 tx_port)
       
-      (2, 1): set_dest(0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    100); 
+      (2, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b03, 0x0b0b0b03, 50000,    50000,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.3:50000 (PS rx_port)
     }
     #endif

@@ -10,6 +10,7 @@
 #include "receiver.p4"
 #include "processor.p4"
 #include "sender.p4"
+// #include "arp_table.p4"
 
 parser MyIngressParser(
     packet_in pkt,
@@ -21,8 +22,14 @@ parser MyIngressParser(
         pkt.extract(hdr.ethernet);
         transition select(hdr.ethernet.ether_type) {
             0x0800:  parse_ipv4;
+            0x0806:  parse_arp;
             default: accept;
         }
+    }
+
+    state parse_arp {
+        pkt.extract(hdr.arp);
+        transition accept;
     }
 
     state parse_ipv4 {
@@ -71,6 +78,7 @@ control MyIngress(
 {
     Receiver() switchfl_receiver;
     Processor() processor;
+    // ArpTable() arp_table;
 
     action drop_action() {
         mark_to_drop(standard_meta);
@@ -133,8 +141,10 @@ control MyIngress(
             } else {
                 switchfl_error_catch_action();
             }
-        } else {
+        } else if (hdr.ipv4.isValid()){
             ipv4_match.apply();
+        } else if (hdr.arp.isValid()) {
+            // arp_table.apply(hdr, meta, standard_meta);
         }
     }
 }

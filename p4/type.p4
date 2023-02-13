@@ -49,6 +49,16 @@ header ethernet_h {
     bit<16>         ether_type;
 }
 
+header arp_h {
+    bit<16>         hw_type;
+    bit<32>         __reserved; // dont care
+    bit<16>         opcode;
+    EthernetAddress src_mac;
+    IPv4Address     src_ipv4_addr;
+    EthernetAddress dst_mac;
+    IPv4Address     dst_ipv4_addr;
+}
+
 header ipv4_h {
     bit<4>      version;
     bit<4>      ihl;
@@ -135,6 +145,7 @@ struct headers_t {
   ethernet_h    ethernet;
   ipv4_h        ipv4;
   udp_h         udp;
+  arp_h         arp;
   switchfl_h    switchfl;
   tensor_t      tensor0;
   tensor_t      tensor1;
