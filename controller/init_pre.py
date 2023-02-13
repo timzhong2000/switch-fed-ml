@@ -15,6 +15,10 @@ sh.setup(
 pre = PacketReplicationEngine(sh)
 pre.add_mcast_replicas(1, [
     {"egress_port": 0, "egress_rid": 1},
+    {"egress_port": 2, "egress_rid": 1},
+])
+pre.add_mcast_replicas(2, [
+    {"egress_port": 0, "egress_rid": 1},
     {"egress_port": 1, "egress_rid": 1},
     {"egress_port": 2, "egress_rid": 1},
 ])
