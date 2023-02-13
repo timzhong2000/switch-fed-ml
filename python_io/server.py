@@ -65,7 +65,7 @@ class Server(Node):
             self.tx_sock.sendto(packet_list[i].buffer, server_addr)
             # TODO: 限速
             if i % 128 == 0:
-                time.sleep(0.002)
+                time.sleep(0.001)
         send_end = time.time()
         print("发送耗时 %f 发送速率 %f Mbps" % (
             send_end - send_start,

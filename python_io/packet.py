@@ -78,14 +78,6 @@ class Packet:
     def set_tensor(self, tensor: np.ndarray):
         self.tensor = tensor
 
-    def __float32_to_int32(self):
-        self.tensor *= scaling_factor
-        self.tensor = self.tensor.astype(np.int32)
-
-    def __int32_to_float32(self):
-        self.tensor = self.tensor.astype(np.float32)
-        self.tensor /= scaling_factor
-
     def parse_header(self):
         header_val = struct.unpack_from(header_format, self.buffer)
         self.set_header(
@@ -123,15 +115,16 @@ class Packet:
             offset=header_size
         ))
         if self.data_type==DataType.FLOAT32.value:
-            self.__int32_to_float32()
+            self.tensor = self.tensor.astype(np.float32)
+            self.tensor /= scaling_factor
         return
 
     # 将 tensor 写入 buffer
     def deparse_payload(self):
         if self.data_type==DataType.FLOAT32.value:
-            self.__float32_to_int32()
-        self.buffer[header_size: pkt_size] = self.tensor.tobytes()
-        
+            self.buffer[header_size: pkt_size] = (self.tensor * scaling_factor).astype(np.int32).tobytes()
+        else:
+            self.buffer[header_size: pkt_size] = self.tensor.tobytes()
 
     def gen_ack_packet(self):
         return struct.pack(
