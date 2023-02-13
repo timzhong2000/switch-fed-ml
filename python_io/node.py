@@ -104,7 +104,7 @@ class Node:
             offset = i * elemenet_per_packet
             pkt.set_header(
                 flow_control=flow_control,
-                data_type=DataType.INT32.value,  # uint8
+                data_type=DataType.FLOAT32.value,  # uint8
                 tensor_id=tensor_id,  # uint32
                 segment_id=i,  # uint32
                 node_id=current_node_id,  # uint16

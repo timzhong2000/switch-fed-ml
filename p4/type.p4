@@ -6,7 +6,7 @@ typedef bit<32> IPv4Address;
 typedef bit<16> MulticastGroupId_t;
 typedef bit<32> TensorId_t;
 typedef bit<32> SegmentId_t;
-typedef bit<32> Data_t;
+typedef int<32> Data_t;
 typedef bit<16> PoolId_t;
 typedef bit<32> WorkerBitmap_t;
 typedef bit<16> AggregateNum_t; // 聚合数

@@ -26,5 +26,10 @@ class Job:
 
     def handle_packet(self, pkt: Packet):
         offset = pkt.segment_id * elemenet_per_packet
+        self.tensor[offset: offset + elemenet_per_packet] = pkt.tensor
+        self.bitmap[int(offset / elemenet_per_packet)] = 1
+
+    def handle_retransmission_packet(self, pkt: Packet):
+        offset = pkt.segment_id * elemenet_per_packet
         self.tensor[offset: offset + elemenet_per_packet] += pkt.tensor
         self.bitmap[int(offset / elemenet_per_packet)] += 1

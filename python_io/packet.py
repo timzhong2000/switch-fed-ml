@@ -3,6 +3,8 @@ import struct
 import numpy as np
 import typing
 
+# int32 和 float32 互转时的系数
+scaling_factor = 1e8
 
 class DataType(Enum):
     INT32 = 0
@@ -24,7 +26,7 @@ header_size = struct.calcsize(header_format)
 
 # packer param
 # elemenet_per_packet = 2048  # MTU 9000
-elemenet_per_packet = 256 # MTU 1100
+elemenet_per_packet = 256  # MTU 1100
 switch_pool_size = 64
 pkt_size = elemenet_per_packet * 4 + header_size
 
@@ -44,7 +46,7 @@ class Packet:
         self.buffer = buffer if buffer is not None else bytearray(pkt_size)
 
         self.flow_control = 0
-        self.data_type = DataType.INT32.value
+        self.data_type = DataType.FLOAT32.value
         self.tensor_id = 0
         self.segment_id = 0
         self.node_id = 0
@@ -72,9 +74,17 @@ class Packet:
         self.ack = flow_control & ack_bitmap
         self.pool_id = pool_id
 
-    # 必须是 shape (elemenet_per_packet) 的 uint32
+    # 必须是 float 数组且 shape: (elemenet_per_packet)
     def set_tensor(self, tensor: np.ndarray):
         self.tensor = tensor
+
+    def __float32_to_int32(self):
+        self.tensor *= scaling_factor
+        self.tensor = self.tensor.astype(np.int32)
+
+    def __int32_to_float32(self):
+        self.tensor = self.tensor.astype(np.float32)
+        self.tensor /= scaling_factor
 
     def parse_header(self):
         header_val = struct.unpack_from(header_format, self.buffer)
@@ -90,16 +100,6 @@ class Packet:
         )
         return
 
-    # 从 buffer 中解析 payload
-    def parse_payload(self):
-        self.set_tensor(np.frombuffer(
-            self.buffer,
-            dtype=np.uint32,
-            offset=header_size
-        ))
-        return
-
-    # 将 header 写入 buffer
     def deparse_header(self):
         struct.pack_into(
             header_format,
@@ -116,9 +116,22 @@ class Packet:
         )
         return
 
+    def parse_payload(self):
+        self.set_tensor(np.frombuffer(
+            self.buffer,
+            dtype=np.int32,
+            offset=header_size
+        ))
+        if self.data_type==DataType.FLOAT32.value:
+            self.__int32_to_float32()
+        return
+
     # 将 tensor 写入 buffer
     def deparse_payload(self):
+        if self.data_type==DataType.FLOAT32.value:
+            self.__float32_to_int32()
         self.buffer[header_size: pkt_size] = self.tensor.tobytes()
+        
 
     def gen_ack_packet(self):
         return struct.pack(

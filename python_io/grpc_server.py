@@ -14,10 +14,6 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         super().__init__()
         self.node = node
 
-    def SendBarrier(self, request, context):
-        # TODO
-        return Empty()
-
     def Retransmission(self, request: Retransmission.Request, context):
         job = self.node.rx_jobs.get((request.tensor_id, request.node_id))
         pkt = Packet()
@@ -25,7 +21,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
             pkt.buffer = slice
             pkt.parse_header()
             pkt.parse_payload()
-            job.handle_packet(pkt)
+            job.handle_retransmission_packet(pkt)
         job.finish()
         return Empty()
 
