@@ -12,13 +12,13 @@ control Processor (
 {
 
   TensorBuffer() tensor_buffer_0;
-  // TensorBuffer() tensor_buffer_1;
-  // TensorBuffer() tensor_buffer_2;
-  // TensorBuffer() tensor_buffer_3;
-  // TensorBuffer() tensor_buffer_4;
-  // TensorBuffer() tensor_buffer_5;
-  // TensorBuffer() tensor_buffer_6;
-  // TensorBuffer() tensor_buffer_7;
+  TensorBuffer() tensor_buffer_1;
+  TensorBuffer() tensor_buffer_2;
+  TensorBuffer() tensor_buffer_3;
+  TensorBuffer() tensor_buffer_4;
+  TensorBuffer() tensor_buffer_5;
+  TensorBuffer() tensor_buffer_6;
+  TensorBuffer() tensor_buffer_7;
 
   register<bit<32>>(POOL_SIZE) aggregate_bitmap;
   register<TensorId_t>(POOL_SIZE) current_tensor_id;
@@ -91,7 +91,7 @@ control Processor (
     bit<32> current_pool_bitmap;
     // 处理重传包，然后检查聚合完成状态
     aggregate_bitmap.read(current_pool_bitmap, pool_id);
-    // 检查当前 worker_bitmap 在当前聚合器是否聚合过，如果聚合过说明是重传包，ecn 降低节点发包速度
+    // 检查当前 worker_bitmap 在当前聚合器是否聚合过，如果聚合过说明是重传包，直接 ack
     if(current_pool_bitmap & meta.bitmap > 0) {
       mark_action_to_ack();
       return;
@@ -105,13 +105,13 @@ control Processor (
       mark_action_to_finish();
       release(pool_id);
       tensor_buffer_0.apply(hdr.tensor0, pool_id, true); // reset tensor buffer
-      // tensor_buffer_1.apply(hdr.tensor1, pool_id, true); // reset tensor buffer
-      // tensor_buffer_2.apply(hdr.tensor2, pool_id, true); // reset tensor buffer
-      // tensor_buffer_3.apply(hdr.tensor3, pool_id, true); // reset tensor buffer
-      // tensor_buffer_4.apply(hdr.tensor4, pool_id, true); // reset tensor buffer
-      // tensor_buffer_5.apply(hdr.tensor5, pool_id, true); // reset tensor buffer
-      // tensor_buffer_6.apply(hdr.tensor6, pool_id, true); // reset tensor buffer
-      // tensor_buffer_7.apply(hdr.tensor7, pool_id, true); // reset tensor buffer
+      tensor_buffer_1.apply(hdr.tensor1, pool_id, true); // reset tensor buffer
+      tensor_buffer_2.apply(hdr.tensor2, pool_id, true); // reset tensor buffer
+      tensor_buffer_3.apply(hdr.tensor3, pool_id, true); // reset tensor buffer
+      tensor_buffer_4.apply(hdr.tensor4, pool_id, true); // reset tensor buffer
+      tensor_buffer_5.apply(hdr.tensor5, pool_id, true); // reset tensor buffer
+      tensor_buffer_6.apply(hdr.tensor6, pool_id, true); // reset tensor buffer
+      tensor_buffer_7.apply(hdr.tensor7, pool_id, true); // reset tensor buffer
     } else {
       mark_action_to_drop();
     }
