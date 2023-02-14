@@ -15,14 +15,14 @@ class DataType(Enum):
 # 包头结构
 # flow_control  uint8
 # data_type     uint8
-# job_id     uint32
+# pool_id       uint16
+# job_id        uint32
 # segment_id    uint32
 # node_id       uint16
 # aggregate_num uint16
 # mcast_grp     uint16
-# pool_id       uint16
 
-header_format = ">BBIIHHHH"
+header_format = ">BBHIIHHH"
 header_size = struct.calcsize(header_format)
 
 # packer param
@@ -84,12 +84,12 @@ class Packet:
         self.set_header(
             flow_control=header_val[0],
             data_type=header_val[1],
-            job_id=header_val[2],
-            segment_id=header_val[3],
-            node_id=header_val[4],
-            aggregate_num=header_val[5],
-            mcast_grp=header_val[6],
-            pool_id=header_val[7],
+            pool_id=header_val[2],
+            job_id=header_val[3],
+            segment_id=header_val[4],
+            node_id=header_val[5],
+            aggregate_num=header_val[6],
+            mcast_grp=header_val[7],
         )
         return
 
@@ -100,12 +100,12 @@ class Packet:
             0,
             self.flow_control,
             self.data_type,
+            self.pool_id,
             self.job_id,
             self.segment_id,
             self.node_id,
             self.aggregate_num,
-            self.mcast_grp,
-            self.pool_id
+            self.mcast_grp
         )
         return
 

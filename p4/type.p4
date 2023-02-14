@@ -94,12 +94,12 @@ header switchfl_h {
   // flow control end
 
   bit<8>              data_type;
+  PoolId_t            pool_id;        // 16bit
   TensorId_t          tensor_id;      // 32bit
   SegmentId_t         segment_id;     // 32bit
   NodeId_t            node_id;
   AggregateNum_t      aggregate_num;  // 16bit
   MulticastGroupId_t  mcast_grp;      // 16bit
-  PoolId_t            pool_id;        // 16bit
 }
 
 // switch fl payload

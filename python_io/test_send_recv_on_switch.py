@@ -7,7 +7,6 @@ from multiprocessing import Process
 
 job_id = 100
 
-
 def client_send():
     server = Server(
         node_id=3,
@@ -23,14 +22,14 @@ def client_send():
         tx_port=50001,
         rpc_addr="127.0.0.1:50000",
         is_remote_node=False,
-        iface="lo")
+        iface="veth1")
     data = np.random.rand((256)).astype(np.float32)
     packet_list = [
         client.create_packet(
             job_id=job_id,
             segment_id=0,
             group_id=1,
-            bypass=True,
+            bypass=False,
             data=data
         )
     ]
@@ -39,7 +38,7 @@ def client_send():
         server=server,
         job_id=job_id,
         packet_list=packet_list,
-        has_switch=False
+        has_switch=True
     )
 
 
@@ -51,7 +50,7 @@ def server_receive():
         tx_port=50001,
         rpc_addr="127.0.0.1:50001",
         is_remote_node=False,
-        iface="lo")
+        iface="veth5")
     client = Client(
         node_id=1,
         ip_addr='11.11.11.1',
