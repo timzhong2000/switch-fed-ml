@@ -2,19 +2,21 @@ from node import Node
 import numpy as np
 from packet import *
 import time
-import io_pb2
-
 
 class Client(Node):
-    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_port: int, node_id: int, is_remote_node: bool, iface: str = ""):
-        super().__init__(ip_addr, rx_port, tx_port, rpc_port, node_id, is_remote_node, iface)
+    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, iface: str = ""):
+        super().__init__(ip_addr, rx_port, tx_port, rpc_addr, node_id, is_remote_node, iface)
         self.type = "client"
 
     # tensor 长度需要被 elemenet_per_packet 整除
-    def send(self, server: Node, group_id: int, tensor_id: int, tensor: np.ndarray, has_switch: bool) -> int:
+    def send(self, server: Node, job_id: int, packet_list: list, has_switch: bool) -> int:
+        """
+        - server: 参数服务器
+        - job_id: 此次发送的任务号，需要与 packet_list 内所有包任务号相同
+        - packet_list: list[Packet]
+        - has_switch: 是否使用 switch 聚合模式发送
+        """
         server_addr = (server.options['ip_addr'], server.options['rx_port'])
-        packet_list = self._create_packets(
-            group_id, tensor_id, tensor, 0 if has_switch else bypass_bitmap)
 
         # 一次性发出发送窗口所有包
         finish_cnt = 0
@@ -29,7 +31,7 @@ class Client(Node):
             send_window_time.append(time.time())
             self.tx_sock.sendto(send_window[i].buffer, server_addr)
 
-        rtt = 0.001
+        rtt = 0.005
         rx_pkt = Packet()
 
         while finish_cnt != total_packet_num:
@@ -37,9 +39,10 @@ class Client(Node):
             try:
                 self.tx_sock.recv_into(rx_pkt.buffer)
                 rx_pkt.parse_header()
-                if rx_pkt.ack and rx_pkt.tensor_id == send_window[rx_pkt.pool_id].tensor_id and rx_pkt.segment_id == send_window[rx_pkt.pool_id].segment_id:
+                if rx_pkt.ack and rx_pkt.job_id == send_window[rx_pkt.pool_id].job_id and rx_pkt.segment_id == send_window[rx_pkt.pool_id].segment_id:
                     finish_cnt += 1
                     next_packet_segment_id = send_window[rx_pkt.pool_id].segment_id + window_size
+                    # print("rtt %f" % (time.time() - send_window_time[rx_pkt.pool_id]))
                     # 尝试发出这个窗口下一个包
                     if next_packet_segment_id < total_packet_num:
                         send_window[rx_pkt.pool_id] = packet_list[next_packet_segment_id]
@@ -64,7 +67,7 @@ class Client(Node):
                             pass
         send_end = time.time()
 
-        retransmit_time = self.check_and_retransmit(server, tensor_id, packet_list)
+        retransmit_time = self.check_and_retransmit(server, job_id, packet_list)
 
         print("发送耗时 %f 发送速率 %f Mbps 重传耗时 %f" % (
             send_end - send_start,
@@ -73,12 +76,12 @@ class Client(Node):
         return
 
     def receive_thread(self) -> None:
-        pkt = Packet()
         while True:
+            pkt = Packet()
             _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
             pkt.parse_header()
             pkt.parse_payload()
-            key: tuple = (pkt.tensor_id, pkt.node_id)
+            key: tuple = (pkt.job_id, pkt.node_id)
             job = self.rx_jobs.get(key)
             if job is None:
                 continue

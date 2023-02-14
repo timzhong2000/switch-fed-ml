@@ -6,6 +6,7 @@ import typing
 # int32 和 float32 互转时的系数
 scaling_factor = 1e8
 
+
 class DataType(Enum):
     INT32 = 0
     FLOAT32 = 1
@@ -14,7 +15,7 @@ class DataType(Enum):
 # 包头结构
 # flow_control  uint8
 # data_type     uint8
-# tensor_id     uint32
+# job_id     uint32
 # segment_id    uint32
 # node_id       uint16
 # aggregate_num uint16
@@ -27,7 +28,7 @@ header_size = struct.calcsize(header_format)
 # packer param
 # elemenet_per_packet = 2048  # MTU 9000
 elemenet_per_packet = 256  # MTU 1100
-switch_pool_size = 64
+switch_pool_size = 2
 pkt_size = elemenet_per_packet * 4 + header_size
 
 
@@ -47,7 +48,7 @@ class Packet:
 
         self.flow_control = 0
         self.data_type = DataType.FLOAT32.value
-        self.tensor_id = 0
+        self.job_id = 0
         self.segment_id = 0
         self.node_id = 0
         self.aggregate_num = 0
@@ -61,9 +62,9 @@ class Packet:
 
         self.tensor: typing.Union[np.ndarray, None] = None
 
-    def set_header(self, flow_control: int, data_type: int, tensor_id: int, segment_id: int, node_id: int, aggregate_num: int, mcast_grp: int, pool_id: int):
+    def set_header(self, flow_control: int, data_type: int, job_id: int, segment_id: int, node_id: int, aggregate_num: int, mcast_grp: int, pool_id: int):
         self.flow_control = flow_control
-        self.tensor_id = tensor_id
+        self.job_id = job_id
         self.segment_id = segment_id
         self.node_id = node_id
         self.aggregate_num = aggregate_num
@@ -83,7 +84,7 @@ class Packet:
         self.set_header(
             flow_control=header_val[0],
             data_type=header_val[1],
-            tensor_id=header_val[2],
+            job_id=header_val[2],
             segment_id=header_val[3],
             node_id=header_val[4],
             aggregate_num=header_val[5],
@@ -99,7 +100,7 @@ class Packet:
             0,
             self.flow_control,
             self.data_type,
-            self.tensor_id,
+            self.job_id,
             self.segment_id,
             self.node_id,
             self.aggregate_num,
@@ -114,15 +115,16 @@ class Packet:
             dtype=np.int32,
             offset=header_size
         ))
-        if self.data_type==DataType.FLOAT32.value:
+        if self.data_type == DataType.FLOAT32.value:
             self.tensor = self.tensor.astype(np.float32)
             self.tensor /= scaling_factor
         return
 
     # 将 tensor 写入 buffer
     def deparse_payload(self):
-        if self.data_type==DataType.FLOAT32.value:
-            self.buffer[header_size: pkt_size] = (self.tensor * scaling_factor).astype(np.int32).tobytes()
+        if self.data_type == DataType.FLOAT32.value:
+            self.buffer[header_size: pkt_size] = (
+                self.tensor * scaling_factor).astype(np.int32).tobytes()
         else:
             self.buffer[header_size: pkt_size] = self.tensor.tobytes()
 
@@ -131,7 +133,7 @@ class Packet:
             header_format,
             self.flow_control | ack_bitmap | bypass_bitmap,
             self.data_type,
-            self.tensor_id,
+            self.job_id,
             self.segment_id,
             self.node_id,
             self.aggregate_num,

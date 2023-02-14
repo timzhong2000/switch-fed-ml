@@ -11,16 +11,16 @@ job_id = 100
 def client_send():
     server = Server(
         node_id=3,
-        ip_addr="127.0.0.1",
+        ip_addr="11.11.11.3",
         rx_port=50000,
         tx_port=50001,
         rpc_addr="127.0.0.1:50001",
         is_remote_node=True)
     client = Client(
         node_id=1,
-        ip_addr='127.0.0.1',
-        rx_port=50003,
-        tx_port=50004,
+        ip_addr='11.11.11.1',
+        rx_port=50000,
+        tx_port=50001,
         rpc_addr="127.0.0.1:50000",
         is_remote_node=False,
         iface="lo")
@@ -46,7 +46,7 @@ def client_send():
 def server_receive():
     server = Server(
         node_id=3,
-        ip_addr="127.0.0.1",
+        ip_addr="11.11.11.3",
         rx_port=50000,
         tx_port=50001,
         rpc_addr="127.0.0.1:50001",
@@ -54,9 +54,9 @@ def server_receive():
         iface="lo")
     client = Client(
         node_id=1,
-        ip_addr='127.0.0.1',
-        rx_port=50003,
-        tx_port=50004,
+        ip_addr='11.11.11.1',
+        rx_port=50000,
+        tx_port=50001,
         rpc_addr="127.0.0.1:50000",
         is_remote_node=True)
     packet_list = server.receive(

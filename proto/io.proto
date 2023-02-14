@@ -3,7 +3,7 @@ syntax = "proto3";
 // 发送端向接收端重传
 message Retransmission{
   message Request {
-    int32 tensor_id = 1;
+    int32 job_id = 1;
     int32 node_id = 2;
     // map<packet_num, tensor_slice>
     repeated bytes data = 99;
@@ -14,8 +14,9 @@ message Retransmission{
 // 发送端查询接收方丢包状态
 message PacketLoss {
   message Request {
-    int32 tensor_id = 1;
+    int32 job_id = 1;
     int32 node_id = 2;
+    int32 range_end = 3;
   };
 
   message Response {

@@ -12,12 +12,14 @@ class Null(_message.Message):
 class PacketLoss(_message.Message):
     __slots__ = []
     class Request(_message.Message):
-        __slots__ = ["node_id", "tensor_id"]
+        __slots__ = ["job_id", "node_id", "range_end"]
+        JOB_ID_FIELD_NUMBER: _ClassVar[int]
         NODE_ID_FIELD_NUMBER: _ClassVar[int]
-        TENSOR_ID_FIELD_NUMBER: _ClassVar[int]
+        RANGE_END_FIELD_NUMBER: _ClassVar[int]
+        job_id: int
         node_id: int
-        tensor_id: int
-        def __init__(self, tensor_id: _Optional[int] = ..., node_id: _Optional[int] = ...) -> None: ...
+        range_end: int
+        def __init__(self, job_id: _Optional[int] = ..., node_id: _Optional[int] = ..., range_end: _Optional[int] = ...) -> None: ...
     class Response(_message.Message):
         __slots__ = ["missing_packet_list"]
         MISSING_PACKET_LIST_FIELD_NUMBER: _ClassVar[int]
@@ -28,12 +30,12 @@ class PacketLoss(_message.Message):
 class Retransmission(_message.Message):
     __slots__ = []
     class Request(_message.Message):
-        __slots__ = ["data", "node_id", "tensor_id"]
+        __slots__ = ["data", "job_id", "node_id"]
         DATA_FIELD_NUMBER: _ClassVar[int]
+        JOB_ID_FIELD_NUMBER: _ClassVar[int]
         NODE_ID_FIELD_NUMBER: _ClassVar[int]
-        TENSOR_ID_FIELD_NUMBER: _ClassVar[int]
         data: _containers.RepeatedScalarFieldContainer[bytes]
+        job_id: int
         node_id: int
-        tensor_id: int
-        def __init__(self, tensor_id: _Optional[int] = ..., node_id: _Optional[int] = ..., data: _Optional[_Iterable[bytes]] = ...) -> None: ...
+        def __init__(self, job_id: _Optional[int] = ..., node_id: _Optional[int] = ..., data: _Optional[_Iterable[bytes]] = ...) -> None: ...
     def __init__(self) -> None: ...

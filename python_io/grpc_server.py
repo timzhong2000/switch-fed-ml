@@ -15,7 +15,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         self.node = node
 
     def Retransmission(self, request: Retransmission.Request, context):
-        job = self.node.rx_jobs.get((request.tensor_id, request.node_id))
+        job = self.node.rx_jobs.get((request.job_id, request.node_id))
         pkt = Packet()
         for slice in request.data:
             pkt.buffer = slice
@@ -26,8 +26,8 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         return Empty()
 
     def ReadMissingSlice(self, request: PacketLoss.Request, context):
-        job = self.node.rx_jobs.get((request.tensor_id, request.node_id))
-        return PacketLoss.Response(missing_packet_list=job.read_missing_slice())
+        job = self.node.rx_jobs.get((request.job_id, request.node_id))
+        return PacketLoss.Response(missing_packet_list=job.read_missing_slice(request.range_end))
 
 
 class GrpcServer:
@@ -37,8 +37,7 @@ class GrpcServer:
             SwitchmlIOServicer(node),
             self.server
         )
-        self.server.add_insecure_port(
-            '0.0.0.0:%d' % (node.options["rpc_port"]))
+        self.server.add_insecure_port(node.options["rpc_addr"])
         self.server.start()
         threading.Thread(target=self.server.wait_for_termination).start()
 
