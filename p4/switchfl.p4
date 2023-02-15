@@ -1,7 +1,7 @@
 #ifndef _SWITCH_FL_MAIN
 #define _SWITCH_FL_MAIN
 
-#define DEBUG
+// #define DEBUG
 #define POOL_SIZE 1024
 
 #include <core.p4>

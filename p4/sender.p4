@@ -46,7 +46,6 @@ control Sender(
     hdr.udp.src_port = temp_port;
   }
 
-  
   action no_action() {}
 
   // <egress_port, egress_rid> 唯一确认了一个包的目的地
@@ -61,17 +60,17 @@ control Sender(
     }
     
     #ifndef DEBUG
-    const size = 128;
+    size = 128;
     #else 
     const entries = {
       //               src_mac,        dst_mac,        src_addr,   dst_addr,   src_port, dst_port, node_id(of ps)
-      (0, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b01, 50000,    50000,    10);
+      (0, 1): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b01, 50000,    50000,    10);
       // 11.11.11.0:50000 (switch) => 11.11.11.1:50000 (client 1 rx_port)
 
-      (1, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b02, 50000,    50000,    10); 
+      (0, 2): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b02, 50000,    50000,    10); 
       // 11.11.11.0:50000 (switch) => 11.11.11.2:50000 (client 2 rx_port)
       
-      (2, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50001,    10);
+      (2, 1): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50001,    10);
       // 11.11.11.0:50000 (switch) => 11.11.11.3:50001 (PS tx_port)
     }
     #endif
@@ -92,17 +91,17 @@ control Sender(
     }
 
     #ifndef DEBUG
-    const size = 128;
+    size = 128;
     #else 
     const entries = {
       //               src_mac,        dst_mac,        src_addr,   dst_addr,   src_port, dst_port, node_id(of this switch)
-      (0, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b01, 50000,    50001,    100); 
+      (0, 1): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b01, 50000,    50001,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.1:50001 (client 1 tx_port)
 
-      (1, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b02, 50000,    50001,    100); 
+      (0, 2): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b02, 50000,    50001,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.2:50001 (client 2 tx_port)
       
-      (2, 1): set_dest(0xba286aa6a45f, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    100); 
+      (2, 1): set_dest(0x00000b0b0b00, 0x6ac127a9ec4e, 0x0b0b0b00, 0x0b0b0b03, 50000,    50000,    100); 
       // 11.11.11.0:50000 (switch) => 11.11.11.3:50000 (PS rx_port)
     }
     #endif
@@ -131,7 +130,7 @@ control Sender(
     }
 
     #ifndef DEBUG
-    const size = 128;
+    size = 128;
     #else 
     const entries = {
       (2, 1): set_is_ps();

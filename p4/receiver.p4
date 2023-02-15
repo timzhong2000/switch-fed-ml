@@ -1,8 +1,6 @@
 #ifndef _SWITCH_FL_RECEIVER
 #define _SWITCH_FL_RECEIVER
 
-#define DEBUG
-
 #include "type.p4"
 
 control Receiver(
