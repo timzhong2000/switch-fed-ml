@@ -170,7 +170,7 @@ class Node:
             node_id=self.options['node_id'],
             aggregate_num=1,
             mcast_grp=group_id,
-            pool_id=segment_id % elemenet_per_packet
+            pool_id=segment_id % switch_pool_size
         )
         pkt.deparse_header()
         pkt.set_tensor(data)
