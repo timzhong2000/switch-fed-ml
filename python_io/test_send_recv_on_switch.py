@@ -7,6 +7,7 @@ from multiprocessing import Process
 
 job_id = 100
 
+
 def client_send():
     server = Server(
         node_id=3,
@@ -24,15 +25,15 @@ def client_send():
         is_remote_node=False,
         iface="veth1")
     data = np.random.rand((256)).astype(np.float32)
-    packet_list = [
-        client.create_packet(
+    packet_list = []
+    for i in range(1024):
+        packet_list.append(client.create_packet(
             job_id=job_id,
-            segment_id=0,
+            segment_id=i,
             group_id=1,
             bypass=False,
             data=data
-        )
-    ]
+        ))
     print(data[0:5])
     client.send(
         server=server,
@@ -61,7 +62,7 @@ def server_receive():
     packet_list = server.receive(
         node=client,
         job_id=job_id,
-        total_packet_num=1
+        total_packet_num=1024
     )
     print(packet_list[0].tensor[0:5])
 

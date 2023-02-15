@@ -28,7 +28,7 @@ header_size = struct.calcsize(header_format)
 # packer param
 # elemenet_per_packet = 2048  # MTU 9000
 elemenet_per_packet = 256  # MTU 1100
-switch_pool_size = 2
+switch_pool_size = 64
 pkt_size = elemenet_per_packet * 4 + header_size
 
 
