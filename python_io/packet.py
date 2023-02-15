@@ -133,10 +133,10 @@ class Packet:
             header_format,
             self.flow_control | ack_bitmap | bypass_bitmap,
             self.data_type,
+            self.pool_id,
             self.job_id,
             self.segment_id,
             self.node_id,
             self.aggregate_num,
-            self.mcast_grp,
-            self.pool_id,
+            self.mcast_grp
         )
