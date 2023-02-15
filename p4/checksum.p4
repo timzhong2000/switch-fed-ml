@@ -2,6 +2,13 @@
 #define _SWITCH_FL_CHECKSUM
 #include "type.p4"
 
+control MyVerifyChecksum(
+    inout headers_t hdr,
+    inout metadata_t meta)
+{
+    apply { }
+}
+
 control MyComputeChecksum(
     inout headers_t hdr,
     inout metadata_t meta)

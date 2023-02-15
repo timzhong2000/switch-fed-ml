@@ -16,22 +16,6 @@
 #include "egress.p4"
 // #include "arp_table.p4"
 
-control MyVerifyChecksum(
-    inout headers_t hdr,
-    inout metadata_t meta)
-{
-    apply { }
-}
-
-control MyEgressDeparser(
-    packet_out pkt,
-    in headers_t hdr)
-{
-    apply {
-        pkt.emit(hdr);
-    }
-}
-
 V1Switch(
     MyIngressParser(),
     MyVerifyChecksum(),

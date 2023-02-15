@@ -72,4 +72,14 @@ control MyEgress(
         }
     }
 }
+
+control MyEgressDeparser(
+    packet_out pkt,
+    in headers_t hdr)
+{
+    apply {
+        pkt.emit(hdr);
+    }
+}
+
 #endif
