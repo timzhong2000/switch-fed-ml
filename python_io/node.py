@@ -77,7 +77,7 @@ class Node:
         channel = grpc.insecure_channel(addr)
         self.rpc_stub = SwitchmlIOStub(channel)
 
-    def receive_async(self, node, job_id, total_packet_num, worker_number = 1):
+    def receive_async(self, node, job_id, total_packet_num, worker_number=1):
         # type: (Node, int, int, int) -> Job
         key: tuple = (job_id, node.options['node_id'])
         job = Job(key, total_packet_num, worker_number)
@@ -141,7 +141,7 @@ class Node:
         # type: (Node, int, list)->int
         retransmit_start = time.time()
         missing_slice = node.rpc_stub.ReadMissingSlice(PacketLoss.Request(
-            job_id=job_id, node_id=self.options['node_id'])).missing_packet_list
+            job_id=job_id, node_id=self.options['node_id'], max_segment_id=len(packet_list)-1)).missing_packet_list
         payload = []
         for segment_id in missing_slice:
             payload.append(bytes(packet_list[segment_id].buffer))

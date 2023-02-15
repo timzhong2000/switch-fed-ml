@@ -16,7 +16,7 @@ message PacketLoss {
   message Request {
     int32 job_id = 1;
     int32 node_id = 2;
-    int32 range_end = 3;
+    int32 max_segment_id = 3;
   };
 
   message Response {

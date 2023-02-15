@@ -12,14 +12,14 @@ class Null(_message.Message):
 class PacketLoss(_message.Message):
     __slots__ = []
     class Request(_message.Message):
-        __slots__ = ["job_id", "node_id", "range_end"]
+        __slots__ = ["job_id", "max_segment_id", "node_id"]
         JOB_ID_FIELD_NUMBER: _ClassVar[int]
+        MAX_SEGMENT_ID_FIELD_NUMBER: _ClassVar[int]
         NODE_ID_FIELD_NUMBER: _ClassVar[int]
-        RANGE_END_FIELD_NUMBER: _ClassVar[int]
         job_id: int
+        max_segment_id: int
         node_id: int
-        range_end: int
-        def __init__(self, job_id: _Optional[int] = ..., node_id: _Optional[int] = ..., range_end: _Optional[int] = ...) -> None: ...
+        def __init__(self, job_id: _Optional[int] = ..., node_id: _Optional[int] = ..., max_segment_id: _Optional[int] = ...) -> None: ...
     class Response(_message.Message):
         __slots__ = ["missing_packet_list"]
         MISSING_PACKET_LIST_FIELD_NUMBER: _ClassVar[int]

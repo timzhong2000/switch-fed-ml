@@ -27,7 +27,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
 
     def ReadMissingSlice(self, request: PacketLoss.Request, context):
         job = self.node.rx_jobs.get((request.job_id, request.node_id))
-        return PacketLoss.Response(missing_packet_list=job.read_missing_slice(request.range_end))
+        return PacketLoss.Response(missing_packet_list=job.read_missing_slice(request.max_segment_id))
 
 
 class GrpcServer:
