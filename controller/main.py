@@ -5,8 +5,9 @@ from utils.group import *
 sh.setup(
     device_id=0,
     grpc_addr='127.0.0.1:9559',
-    election_id=(0, 1), # (high, low)
-    config=sh.FwdPipeConfig('/root/switch-fed-ml/p4/switchfl.bmv2/p4info.txt', '/root/switch-fed-ml/p4/switchfl.bmv2/switchfl.json')
+    election_id=(0, 1),  # (high, low)
+    config=sh.FwdPipeConfig('/root/switch-fed-ml/p4/switchfl.bmv2/p4info.txt',
+                            '/root/switch-fed-ml/p4/switchfl.bmv2/switchfl.json')
 )
 
 switch_node_id = 10
@@ -70,8 +71,16 @@ node2 = get_or_create_node(
     ps_node_id=ps_node.node_id,
 )
 
-group1 = get_or_create_group(sh, 1, ps_node)
-group2 = get_or_create_group(sh, 2, ps_node)
+group1 = get_or_create_group(
+    switch=sh,
+    mcast_grp=1,
+    ps_node=ps_node
+)
+group2 = get_or_create_group(
+    switch=sh,
+    mcast_grp=2,
+    ps_node=ps_node
+)
 
 node1.link_to_group(group1)
 

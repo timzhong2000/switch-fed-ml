@@ -44,7 +44,7 @@ ps_node = get_or_create_node(
     role="ps"
 )
 
-worker = get_or_create_node(
+worker1 = get_or_create_node(
     switch=sh,
     node_id=1,
     bitmap=1,
@@ -64,10 +64,18 @@ worker = get_or_create_node(
 **基本用法**
 
 ```py
-group1 = get_or_create_group(sh, 1, ps_node)
+# 初始化分组
+group1 = get_or_create_group(
+    switch=sh,
+    mcast_grp=1,
+    ps_node=ps_node
+)
 # 将 worker 添加到分组 1
-worker.link_to_group(group1) 
+worker1.link_to_group(group1)
 # 将 worker 从分组 1 移除
-worker.unlink_to_group(group1) 
-
+worker1.unlink_to_group(group1)
 ```
+
+### 效果
+当来自 ps 的 mcast_grp==1 下发包进入 switch，包会被转发给处于分组中的 worker1，同时会向 ps ack 这个包
+当来自 mcast_grp==1 的所有节点都完成 reduce 的发送流程，聚合结果将会把包头 node_id 改为 switch 的 node_id，然后广播 ack 给所有 worker节点，并且将完整包发送给 ps
