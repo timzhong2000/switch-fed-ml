@@ -1,6 +1,6 @@
 import p4runtime_sh.shell as sh
-from utils.switchfl_sender import *
-from utils.switchfl_receiver import *
+from utils.node import *
+from utils.group import *
 
 sh.setup(
     device_id=0,
@@ -12,90 +12,54 @@ sh.setup(
 switch_node_id = 10
 ps_node_id = 99
 
-receiver = Receiver(switch=sh)
-
-receiver.init_group(
-    ps_node_id=ps_node_id,
-    mcast_grp=1,
-    egress_port=2,
-    egress_rid=0
-)
-receiver.add_worker_to_group(
-    node_id=1,
-    mcast_grp=1,
-    egress_port=0,
-    egress_rid=1,
-    node_bitmap=1
-)
-
-# receiver.init_group(
-#     ps_node_id=ps_node_id,
-#     mcast_grp=2,
-#     egress_port=2,
-#     egress_rid=0
-# )
-# receiver.add_worker_to_group(
-#     node_id=1,
-#     mcast_grp=2,
-#     egress_port=0,
-#     egress_rid=1,
-#     node_bitmap=1
-# )
-# receiver.add_worker_to_group(
-#     node_id=2,
-#     mcast_grp=2,
-#     egress_port=0,
-#     egress_rid=2,
-#     node_bitmap=2
-# )
-
-
-sender = Sender(
-    switch=sh, 
-    switch_node_id=switch_node_id, 
-    switch_mac="00:00:0b:0b:0b:00"
-)
-
-sender.add_node(
-    node_id=1,
-    node_mac="6a:c1:27:a9:ec:4e",
-    egress_port=0,
-    egress_rid=1,
-    switch_addr="11.11.11.0",
-    switch_port=51000,
-    node_address="11.11.11.1",
+switch_node = get_or_create_node(
+    switch=sh,
+    node_id=10,
+    bitmap=-1,
+    egress_port=-1,
+    egress_rid=-1,
+    mac="00:00:0b:0b:0b:00",
+    addr="11.11.11.0",
     rx_port=50000,
-    tx_port=50001,
-    ps_node_id=ps_node_id,
-    is_ps=False
+    tx_port=50000,
+    switch_node=None,
+    ps_node_id=-1,
+    role="switch"
 )
-sender.add_node(
-    node_id=2,
-    node_mac="6a:c1:27:a9:ec:4e",
-    egress_port=0,
-    egress_rid=2,
-    switch_addr="11.11.11.0",
-    switch_port=51000,
-    node_address="11.11.11.2",
-    rx_port=50003,
-    tx_port=50004,
-    ps_node_id=ps_node_id,
-    is_ps=False
-)
-sender.add_node(
-    node_id=ps_node_id,
-    node_mac="6a:c1:27:a9:ec:4e",
+
+ps_node = get_or_create_node(
+    switch=sh,
+    node_id=9,
+    bitmap=-1,
     egress_port=2,
     egress_rid=1,
-    switch_addr="11.11.11.0",
-    switch_port=51000,
-    node_address="11.11.11.3",
+    mac="00:00:0b:0b:0b:09",
+    addr="11.11.11.9",
     rx_port=50000,
     tx_port=50001,
-    ps_node_id=ps_node_id,
-    is_ps=False
+    switch_node=switch_node,
+    ps_node_id=9,
+    role="ps"
 )
 
+node1 = get_or_create_node(
+    switch=sh,
+    node_id=1,
+    bitmap=1,
+    egress_port=0,
+    egress_rid=1,
+    mac="6a:c1:27:a9:ec:4e",
+    addr="11.11.11.1",
+    rx_port=50000,
+    tx_port=50001,
+    switch_node=switch_node,
+    ps_node_id=ps_node.node_id,
+)
+
+group = get_or_create_group(sh, 1, ps_node)
+
+node1.link_to_group(group)
 print("--------------------- config finish ---------------------------")
 print("read_reduce_table: ")
-sender.read_reduce_table()
+
+node1.read_reduce_table()
