@@ -18,8 +18,8 @@ switch_node = get_or_create_node(
     bitmap=-1,
     egress_port=-1,
     egress_rid=-1,
-    mac="00:00:0b:0b:0b:00",
-    addr="11.11.11.0",
+    mac="00:00:0b:0b:0b:08",
+    addr="11.11.11.8",
     rx_port=50000,
     tx_port=50000,
     switch_node=None,
@@ -56,9 +56,27 @@ node1 = get_or_create_node(
     ps_node_id=ps_node.node_id,
 )
 
-group = get_or_create_group(sh, 1, ps_node)
+node2 = get_or_create_node(
+    switch=sh,
+    node_id=2,
+    bitmap=2,
+    egress_port=0,
+    egress_rid=2,
+    mac="6a:c1:27:a9:ec:4f",
+    addr="11.11.11.2",
+    rx_port=50000,
+    tx_port=50001,
+    switch_node=switch_node,
+    ps_node_id=ps_node.node_id,
+)
 
-node1.link_to_group(group)
+group1 = get_or_create_group(sh, 1, ps_node)
+group2 = get_or_create_group(sh, 2, ps_node)
+
+node1.link_to_group(group1)
+
+node1.link_to_group(group2)
+node2.link_to_group(group2)
 print("--------------------- config finish ---------------------------")
 print("read_reduce_table: ")
 
