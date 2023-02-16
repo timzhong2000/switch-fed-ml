@@ -47,7 +47,9 @@ class Node:
             print("成功监听数据端口 %s:%d" %
                   (self.options['ip_addr'], self.options['rx_port']))
             self.__receive_thread = threading.Thread(
-                target=self.receive_thread)
+                target=self.receive_thread,
+                daemon=True
+            )
             self.__receive_thread.start()
             print("成功启动接收线程 id=%d" % (self.__receive_thread.ident))
             self.rpc_server: GrpcServer = GrpcServer(self)
@@ -65,12 +67,18 @@ class Node:
 
     # stop the server
     def _close(self):
-        print("grpc 服务正在关闭")
-        self.rpc_server.stop()
+        if self.rpc_server is not None:
+            print("grpc 服务正在关闭")
+            self.rpc_server.stop()
         if self.tx_sock is not None:
+            print("读 socket 正在关闭")
             self.tx_sock.close()
         if self.rx_sock is not None:
+            print("写 socket 正在关闭")
             self.rx_sock.close()
+        if self.__receive_thread is not None:
+            # TODO
+            pass
 
     def _init_as_remote_node(self):
         addr = self.options['rpc_addr']

@@ -1,9 +1,7 @@
 from packet import *
-from typing import List
 import time
 from node import Node
 from node import Node
-
 
 class Server(Node):
 
@@ -13,44 +11,6 @@ class Server(Node):
 
     def close(self):
         self._close()
-
-    # def multicast(self, node_list: List[Node], group_id: int, job_id: int, tensor: np.ndarray):
-    #     threads: List[threading.Thread] = []
-    #     tensors: List[np.ndarray] = []
-
-    #     for node in node_list:
-    #         tensor_temp = np.zeros(tensor.shape, tensor.dtype)
-    #         send_thread = threading.Thread(
-    #             target=self.send,
-    #             args=[node, group_id, job_id, tensor]
-    #         )
-    #         send_thread.start()
-    #         tensors.append(tensor_temp)
-    #         threads.append(send_thread)
-
-    #     for thread in threads:
-    #         thread.join()
-
-    # def reduce(self, node_list: List[Node], group_id: int, job_id: int, tensor: np.ndarray):
-    #     threads: List[threading.Thread] = []
-    #     tensors: List[np.ndarray] = []
-
-    #     for node in node_list:
-    #         tensor_temp = np.zeros(tensor.shape, tensor.dtype)
-    #         receive_thread = threading.Thread(
-    #             target=self.receive,
-    #             args=[node, group_id, job_id, tensor_temp]
-    #         )
-    #         receive_thread.start()
-    #         tensors.append(tensor_temp)
-    #         threads.append(receive_thread)
-
-    #     for thread in threads:
-    #         thread.join()
-
-    #     for recv_tensor in tensors:
-    #         tensor += recv_tensor
-    #     return
 
     # 下发不检测丢包
     def send(self, node: Node, job_id: int, packet_list: list):
@@ -90,6 +50,9 @@ class Server(Node):
             if job is None:
                 continue
             job.handle_packet(pkt)
+            # if pkt.aggregate_num == 1:
+            #     # 聚合数不等于 1 通常是 switch 发出，不需要 ack
+            #     self.rx_sock.sendto(pkt.gen_ack_packet(), client)
             self.rx_sock.sendto(pkt.gen_ack_packet(), client)
 
     def get_node_list_by_group_id(self):
