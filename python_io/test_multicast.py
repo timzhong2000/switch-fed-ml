@@ -28,7 +28,7 @@ def client_recv():
     packet_list = client.receive(
         node=server,
         job_id=job_id,
-        total_packet_num=1
+        total_packet_num=10240
     )
     print(packet_list[0].tensor[0:5])
 
@@ -53,11 +53,11 @@ def server_send():
     packet_list = [
         server.create_packet(
             job_id=job_id,
-            segment_id=0,
+            segment_id=i,
             group_id=1,
             bypass=True,
             data=data
-        )
+        ) for i in range(10240)
     ]
     print(data[0:5])
     server.send(
