@@ -52,3 +52,7 @@ if __name__ == "__main__":
     route_table.add_rule("192.168.2.0/24", 2)
     route_table.add_rule("10.10.0.0/16", 3)
     route_table.print_route_table()
+    route_table.delete_rule("192.168.1.0/24")
+    route_table.print_route_table()
+    route_table.modify_rule("10.10.0.0/16", 10)
+    route_table.print_route_table()
