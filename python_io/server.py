@@ -39,23 +39,6 @@ class Server(Node):
             self.check_and_retransmit(node, job_id, packet_list)
         return
 
-    def receive_thread(self) -> None:
-        while True:
-            pkt = Packet()
-            _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
-            pkt.parse_header()
-            pkt.parse_payload()
-            key: tuple = (pkt.job_id, pkt.node_id)
-            job = self.rx_jobs.get(key)
-            if job is None:
-                print("WARNING: receive job not exist! job_id:%d node_id:%d") % (pkt.job_id, pkt.node_id)
-                continue
-            job.handle_packet(pkt)
-            # if pkt.aggregate_num == 1:
-            #     # 聚合数不等于 1 通常是 switch 发出，不需要 ack
-            #     self.rx_sock.sendto(pkt.gen_ack_packet(), client)
-            self.rx_sock.sendto(pkt.gen_ack_packet(), client)
-
     def get_node_list_by_group_id(self):
         # TODO
         return self.children

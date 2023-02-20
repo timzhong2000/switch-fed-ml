@@ -1,6 +1,5 @@
 import numpy as np
 import socket
-import math
 import threading
 from packet import *
 from job import Job
@@ -10,9 +9,6 @@ from io_pb2 import *
 import typing
 from grpc_server import GrpcServer
 import time
-
-add_delay_ms = 10
-
 
 class Node:
     def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, iface: str, group_id: int = 10):
@@ -85,7 +81,7 @@ class Node:
         channel = grpc.insecure_channel(addr)
         self.rpc_stub = SwitchmlIOStub(channel)
 
-    def receive_async(self, node, job_id, total_packet_num, worker_number=1):
+    def receive_async(self, node, job_id, total_packet_num, worker_number):
         # type: (Node, int, int, int) -> Job
         key: tuple = (job_id, node.options['node_id'])
         job = Job(key, total_packet_num, worker_number)
@@ -101,7 +97,8 @@ class Node:
 
         返回收到的 packet list
         """
-        job = self.receive_async(node, job_id, total_packet_num)
+        worker_number = len(node.children) if node.type == "switch" else 1 
+        job = self.receive_async(node, job_id, total_packet_num, worker_number)
         job.wait_until_job_finish()
 
         received = job.bitmap.sum()
@@ -157,6 +154,24 @@ class Node:
             job_id=job_id, node_id=self.options['node_id'], data=payload))
         retransmit_end = time.time()
         return retransmit_end - retransmit_start
+
+    def receive_thread(self) -> None:
+        while True:
+            pkt = Packet()
+            _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
+            pkt.parse_header()
+            pkt.parse_payload()
+            key: tuple = (pkt.job_id, pkt.node_id)
+            job = self.rx_jobs.get(key)
+            if job is None:
+                print("WARNING: receive job not exist! job_id:%d node_id:%d") % (pkt.job_id, pkt.node_id)
+                continue
+            job.handle_packet(pkt)
+            # if pkt.aggregate_num == 1:
+            #     # 聚合数不等于 1 通常是 switch 发出，不需要 ack
+            #     self.rx_sock.sendto(pkt.gen_ack_packet(), client)
+            if self.type == "server":
+                self.rx_sock.sendto(pkt.gen_ack_packet(), client)
 
     def create_packet(self, job_id: int, segment_id: int, group_id: int, bypass: bool, data: np.ndarray):
         """

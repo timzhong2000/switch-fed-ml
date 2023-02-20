@@ -74,16 +74,3 @@ class Client(Node):
             elemenet_per_packet * total_packet_num * 4 / 1024 / 1024 * 8 / (send_end - send_start),
             retransmit_time))
         return
-
-    def receive_thread(self) -> None:
-        while True:
-            pkt = Packet()
-            _, client = self.rx_sock.recvfrom_into(pkt.buffer, pkt_size)
-            pkt.parse_header()
-            pkt.parse_payload()
-            key: tuple = (pkt.job_id, pkt.node_id)
-            job = self.rx_jobs.get(key)
-            if job is None:
-                continue
-            job.handle_packet(pkt)
-            # client 不需要 ack
