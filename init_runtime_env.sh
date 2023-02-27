@@ -37,3 +37,6 @@ sudo sysctl net.ipv6.conf.veth4.disable_ipv6=1
 sudo sysctl net.ipv6.conf.veth5.disable_ipv6=1
 sudo ip addr add 11.11.11.3/16 dev veth5
 sudo route add -net 11.11.0.0 netmask 255.255.0.0 dev veth5
+
+arp -s 11.11.11.9 00:00:0b:0b:0b:09 -i veth1
+arp -s 11.11.11.10 00:00:0b:0b:0b:0a -i veth1

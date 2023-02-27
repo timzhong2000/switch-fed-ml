@@ -31,7 +31,7 @@ namespace switchfl
 
     for (auto node : node_list_to_receive)
     {
-      auto temp_tensor = std::make_shared<Tensor>(tensor->len, tensor->data_type, tensor->tensor_id);
+      auto temp_tensor = std::make_shared<Tensor>(tensor->len, tensor->data_type, tensor->round_id);
       tensor_buffer.push_back(temp_tensor);
       threads.push_back(std::thread([this, node, temp_tensor, group_id]
                                     { this->receive(*node, group_id, temp_tensor); }));

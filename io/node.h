@@ -88,7 +88,7 @@ namespace switchfl
     /**
      * @param offset offset of elemenet, not byte
      */
-    void *seek_pending_tensor(TensorId tensor_id, uint32_t offset);
+    void *seek_pending_tensor(TensorId round_id, uint32_t offset);
 
     /**
      * 通过 rpc 从指定 node 读取 tensor 缺失的部分

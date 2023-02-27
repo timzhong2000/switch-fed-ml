@@ -2,7 +2,7 @@
 control TensorBuffer(
   inout tensor_t tensor,
   in bit<32> pool_id,
-  in bool is_reset_action
+  in bool should_aggregate // true: 递增后交换，false: 直接交换
 ) {
   register<int<32>>(POOL_SIZE) r0;
   register<int<32>>(POOL_SIZE) r1;
@@ -202,46 +202,144 @@ control TensorBuffer(
     // loop end
   }
 
-  action reset(){
-    r0.write(pool_id, 0);
-    r1.write(pool_id, 0);
-    r2.write(pool_id, 0);
-    r3.write(pool_id, 0);
-    r4.write(pool_id, 0);
-    r5.write(pool_id, 0);
-    r6.write(pool_id, 0);
-    r7.write(pool_id, 0);
-    r8.write(pool_id, 0);
-    r9.write(pool_id, 0);
-    r10.write(pool_id, 0);
-    r11.write(pool_id, 0);
-    r12.write(pool_id, 0);
-    r13.write(pool_id, 0);
-    r14.write(pool_id, 0);
-    r15.write(pool_id, 0);
-    r16.write(pool_id, 0);
-    r17.write(pool_id, 0);
-    r18.write(pool_id, 0);
-    r19.write(pool_id, 0);
-    r20.write(pool_id, 0);
-    r21.write(pool_id, 0);
-    r22.write(pool_id, 0);
-    r23.write(pool_id, 0);
-    r24.write(pool_id, 0);
-    r25.write(pool_id, 0);
-    r26.write(pool_id, 0);
-    r27.write(pool_id, 0);
-    r28.write(pool_id, 0);
-    r29.write(pool_id, 0);
-    r30.write(pool_id, 0);
-    r31.write(pool_id, 0);
+  action do_swap(){
+    int<32> temp;
+    // loop start
+    r0.read(temp, pool_id);
+    r0.write(pool_id, tensor.d0);
+    tensor.d0 = temp;
+
+    r1.read(temp, pool_id);
+    r1.write(pool_id, tensor.d1);
+    tensor.d1 = temp;
+    
+    r2.read(temp, pool_id);
+    r2.write(pool_id, tensor.d2);
+    tensor.d2 = temp;
+    
+    r3.read(temp, pool_id);
+    r3.write(pool_id, tensor.d3);
+    tensor.d3 = temp;
+    
+    r4.read(temp, pool_id);
+    r4.write(pool_id, tensor.d4);
+    tensor.d4 = temp;
+    
+    r5.read(temp, pool_id);
+    r5.write(pool_id, tensor.d5);
+    tensor.d5 = temp;
+    
+    r6.read(temp, pool_id);
+    r6.write(pool_id, tensor.d6);
+    tensor.d6 = temp;
+    
+    r7.read(temp, pool_id);
+    r7.write(pool_id, tensor.d7);
+    tensor.d7 = temp;
+    
+    r8.read(temp, pool_id);
+    r8.write(pool_id, tensor.d8);
+    tensor.d8 = temp;
+    
+    r9.read(temp, pool_id);
+    r9.write(pool_id, tensor.d9);
+    tensor.d9 = temp;
+    
+    r10.read(temp, pool_id);
+    r10.write(pool_id, tensor.d10);
+    tensor.d10 = temp;
+
+    r11.read(temp, pool_id);
+    r11.write(pool_id, tensor.d11);
+    tensor.d11 = temp;
+
+    r12.read(temp, pool_id);
+    r12.write(pool_id, tensor.d12);
+    tensor.d12 = temp;
+    
+    r13.read(temp, pool_id);
+    r13.write(pool_id, tensor.d13);
+    tensor.d13 = temp;
+    
+    r14.read(temp, pool_id);
+    r14.write(pool_id, tensor.d14);
+    tensor.d14 = temp;
+    
+    r15.read(temp, pool_id);
+    r15.write(pool_id, tensor.d15);
+    tensor.d15 = temp;
+    
+    r16.read(temp, pool_id);
+    r16.write(pool_id, tensor.d16);
+    tensor.d16 = temp;
+    
+    r17.read(temp, pool_id);
+    r17.write(pool_id, tensor.d17);
+    tensor.d17 = temp;
+    
+    r18.read(temp, pool_id);
+    r18.write(pool_id, tensor.d18);
+    tensor.d18 = temp;
+    
+    r19.read(temp, pool_id);
+    r19.write(pool_id, tensor.d19);
+    tensor.d19 = temp;
+    
+    r20.read(temp, pool_id);
+    r20.write(pool_id, tensor.d20);
+    tensor.d20 = temp;
+
+    r21.read(temp, pool_id);
+    r21.write(pool_id, tensor.d21);
+    tensor.d21 = temp;
+
+    r22.read(temp, pool_id);
+    r22.write(pool_id, tensor.d22);
+    tensor.d22 = temp;
+    
+    r23.read(temp, pool_id);
+    r23.write(pool_id, tensor.d23);
+    tensor.d23 = temp;
+    
+    r24.read(temp, pool_id);
+    r24.write(pool_id, tensor.d24);
+    tensor.d24 = temp;
+    
+    r25.read(temp, pool_id);
+    r25.write(pool_id, tensor.d25);
+    tensor.d25 = temp;
+    
+    r26.read(temp, pool_id);
+    r26.write(pool_id, tensor.d26);
+    tensor.d26 = temp;
+    
+    r27.read(temp, pool_id);
+    r27.write(pool_id, tensor.d27);
+    tensor.d27 = temp;
+    
+    r28.read(temp, pool_id);
+    r28.write(pool_id, tensor.d28);
+    tensor.d28 = temp;
+    
+    r29.read(temp, pool_id);
+    r29.write(pool_id, tensor.d29);
+    tensor.d29 = temp;
+    
+    r30.read(temp, pool_id);
+    r30.write(pool_id, tensor.d30);
+    tensor.d30 = temp;
+    
+    r31.read(temp, pool_id);
+    r31.write(pool_id, tensor.d31);
+    tensor.d31 = temp;
+    // loop end
   }
 
   apply {
-    if(is_reset_action) {
-      reset();
-    }else{
+    if(should_aggregate) {
       aggregate();
+    } else {
+      do_swap();
     }
   }
 }

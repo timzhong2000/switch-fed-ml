@@ -15,7 +15,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         self.node = node
 
     def Retransmission(self, request: Retransmission.Request, context):
-        job = self.node.rx_jobs.get((request.job_id, request.node_id))
+        job = self.node.rx_jobs.get((request.round_id, request.node_id))
         pkt = Packet()
         for slice in request.data:
             pkt.buffer = slice
@@ -26,7 +26,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         return Empty()
 
     def ReadMissingSlice(self, request: PacketLoss.Request, context):
-        job = self.node.rx_jobs.get((request.job_id, request.node_id))
+        job = self.node.rx_jobs.get((request.round_id, request.node_id))
         return PacketLoss.Response(missing_packet_list=job.read_missing_slice(request.max_segment_id))
 
 

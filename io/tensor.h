@@ -13,16 +13,16 @@ namespace switchfl
     void *buffer;
     uint64_t len; // the len of element, not byte
     uint8_t data_type;
-    TensorId tensor_id;
+    TensorId round_id;
     AggregateNum aggregate_num;
 
     /** create a new tensor*/
-    Tensor(uint64_t len, uint8_t data_type, TensorId tensor_id);
+    Tensor(uint64_t len, uint8_t data_type, TensorId round_id);
 
     /**
      * @deprecated not recommend, the **external buffer** pointer is **dangerous**
      */
-    Tensor(void *buffer, uint64_t len, uint8_t data_type, TensorId tensor_id);
+    Tensor(void *buffer, uint64_t len, uint8_t data_type, TensorId round_id);
 
     /** do not support tensor copy */
     Tensor(Tensor &tensor) = delete;

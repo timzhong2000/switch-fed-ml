@@ -13,10 +13,10 @@ class Server(Node):
         self._close()
 
     # 下发不检测丢包
-    def send(self, node: Node, job_id: int, packet_list: list):
+    def send(self, node: Node, round_id: int, packet_list: list):
         """
         - node: 发送目标
-        - job_id: 此次发送的任务号
+        - round_id: 此次发送的任务号
         - packet_list: list[Packet]
         """
         send_start = time.time()
@@ -34,9 +34,9 @@ class Server(Node):
 
         if node.type == "switch":
             for client in node.children.values():
-                self.check_and_retransmit(client, job_id, packet_list)
+                self.check_and_retransmit(client, round_id, packet_list)
         else:
-            self.check_and_retransmit(node, job_id, packet_list)
+            self.check_and_retransmit(node, round_id, packet_list)
         return
 
     def get_node_list_by_group_id(self):

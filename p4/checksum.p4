@@ -53,7 +53,7 @@ control MyComputeChecksum(
         //         hdr.switchfl.retranmission,
         //         hdr.switchfl.__reserved,
         //         hdr.switchfl.data_type,
-        //         hdr.switchfl.tensor_id,
+        //         hdr.switchfl.round_id,
         //         hdr.switchfl.segment_id,
         //         hdr.switchfl.node_id,
         //         hdr.switchfl.aggregate_num,

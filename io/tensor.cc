@@ -4,12 +4,12 @@
 
 namespace switchfl
 {
-  Tensor::Tensor(uint64_t len, uint8_t data_type, TensorId tensor_id) : len(len), data_type(data_type), tensor_id(tensor_id), aggregate_num(1)
+  Tensor::Tensor(uint64_t len, uint8_t data_type, TensorId round_id) : len(len), data_type(data_type), round_id(round_id), aggregate_num(1)
   {
     this->buffer = malloc(sizeofDataType(data_type) * len);
   }
 
-  Tensor::Tensor(void *buffer, uint64_t len, uint8_t data_type, TensorId tensor_id) : buffer(buffer), len(len), data_type(data_type), tensor_id(tensor_id), is_external_buffer(true), aggregate_num(1)
+  Tensor::Tensor(void *buffer, uint64_t len, uint8_t data_type, TensorId round_id) : buffer(buffer), len(len), data_type(data_type), round_id(round_id), is_external_buffer(true), aggregate_num(1)
   {
   }
 
@@ -18,11 +18,11 @@ namespace switchfl
     this->buffer = tensor.buffer;
     this->data_type = tensor.data_type;
     this->len = tensor.len;
-    this->tensor_id = tensor.tensor_id;
+    this->round_id = tensor.round_id;
     this->aggregate_num = tensor.aggregate_num;
     tensor.buffer = nullptr;
     tensor.len = 0;
-    tensor.tensor_id = 0;
+    tensor.round_id = 0;
   }
 
   Tensor::~Tensor()

@@ -43,7 +43,7 @@ namespace switchfl
       tx_pkt.header->data_type = tensor->data_type;
       tx_pkt.header->node_id = this->options.node_id;
       tx_pkt.header->packet_id = i;
-      tx_pkt.header->tensor_id = tensor->tensor_id;
+      tx_pkt.header->round_id = tensor->round_id;
       tx_pkt.header->ucast_grp = group_id;
       memcpy(tx_pkt.data, tensor->seek(tx_pkt.header->packet_id * elements_per_packet), elements_per_packet * sizeofDataType(tensor->data_type));
       while (true)
@@ -67,7 +67,7 @@ namespace switchfl
     uint32_t elements_per_packet = (DATA_LEN / sizeofDataType(tensor->data_type));
     uint32_t total_packet_num = tensor->len / elements_per_packet;
 
-    auto key = std::make_tuple(tensor->tensor_id, node.options.node_id);
+    auto key = std::make_tuple(tensor->round_id, node.options.node_id);
     auto bitmap = std::make_shared<Bitmap>(total_packet_num);
     auto job = std::make_shared<Job>(tensor, bitmap);
     this->rx_jobs.insert(std::make_pair(key, job));
@@ -94,7 +94,7 @@ namespace switchfl
     while (1)
     {
       this->socket.receive_from(buffer(pkt.buffer, pkt.size()), ep);
-      auto key = std::make_tuple(pkt.header->tensor_id, pkt.header->node_id);
+      auto key = std::make_tuple(pkt.header->round_id, pkt.header->node_id);
       auto job = this->rx_jobs.find(key)->second;
       if (!job)
       {

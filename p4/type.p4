@@ -4,7 +4,7 @@
 typedef bit<48> EthernetAddress;
 typedef bit<32> IPv4Address;
 typedef bit<16> MulticastGroupId_t;
-typedef bit<32> TensorId_t;
+typedef bit<32> RoundId_t;
 typedef bit<32> SegmentId_t;
 typedef int<32> Data_t;
 typedef bit<16> PoolId_t;
@@ -95,7 +95,7 @@ header switchfl_h {
 
   bit<8>              data_type;
   PoolId_t            pool_id;        // 16bit
-  TensorId_t          tensor_id;      // 32bit
+  RoundId_t           round_id;      // 32bit
   SegmentId_t         segment_id;     // 32bit
   NodeId_t            node_id;
   AggregateNum_t      aggregate_num;  // 16bit

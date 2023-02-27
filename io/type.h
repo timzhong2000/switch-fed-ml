@@ -23,7 +23,7 @@ namespace switchfl
 
     // 2 byte
 
-    TensorId tensor_id;
+    TensorId round_id;
 
     // 6 byte
 

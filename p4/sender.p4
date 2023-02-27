@@ -149,6 +149,7 @@ control Sender(
     } else {
       send_back();
     }
+    hdr.switchfl.aggregate_num = meta.total_aggregate_num;
     ps_mark.apply();
   }
 }
