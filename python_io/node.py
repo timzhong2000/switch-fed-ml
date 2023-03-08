@@ -166,7 +166,7 @@ class Node:
             key: tuple = (pkt.round_id, pkt.node_id)
             job = self.rx_jobs.get(key)
             if job is None:
-                print("WARNING: receive job not exist! round_id:%d node_id:%d") % (pkt.round_id, pkt.node_id)
+                print("WARNING: receive job not exist! round_id:%d node_id:%d" % (pkt.round_id, pkt.node_id)) 
                 continue
             job.handle_packet(pkt)
             # if pkt.aggregate_num == 1:
