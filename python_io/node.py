@@ -40,6 +40,7 @@ class Node:
             self.tx_sock = self._create_udp_socket()
             self.tx_sock.bind(
                 (self.options['ip_addr'], self.options['tx_port']))
+
             print("成功监听数据端口 %s:%d" %
                   (self.options['ip_addr'], self.options['rx_port']))
             self.__receive_thread = threading.Thread(
@@ -59,6 +60,7 @@ class Node:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET,
                         socket.SO_BINDTODEVICE, self.iface.encode())
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return sock
 
     # stop the server
