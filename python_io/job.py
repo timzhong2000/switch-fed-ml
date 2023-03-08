@@ -45,4 +45,4 @@ class Job:
         missing_slice = np.where(self.bitmap == 0)[0]
         if range_end == -1:
             return missing_slice
-        return (np.where(self.bitmap == 0)[0])[missing_slice <= range_end]
+        return missing_slice[missing_slice <= range_end] 
