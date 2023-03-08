@@ -16,6 +16,7 @@ class Client(Node):
         - packet_list: list[Packet]
         - has_switch: 是否使用 switch 聚合模式发送
         """
+        print("client 开始发送")
         server_addr = (server.options['ip_addr'], server.options['rx_port'])
 
         # 一次性发出发送窗口所有包
@@ -66,7 +67,7 @@ class Client(Node):
 
         retransmit_time = self.check_and_retransmit(server, round_id, packet_list)
 
-        print("发送耗时 %f 发送速率 %f Mbps 重传耗时 %f" % (
+        print("client 发送结束 发送耗时 %f 发送速率 %f Mbps 重传耗时 %f" % (
             send_end - send_start,
             elemenet_per_packet * total_packet_num * 4 / 1024 / 1024 * 8 / (send_end - send_start),
             retransmit_time))

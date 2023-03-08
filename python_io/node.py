@@ -102,6 +102,7 @@ class Node:
 
         返回收到的 packet list
         """
+        print("开始接收")
         worker_number = len(node.children) if node.type == "switch" else 1 
         job = self.receive_async(node, round_id, total_packet_num, worker_number)
         job.wait_until_job_finish()
