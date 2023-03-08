@@ -80,7 +80,10 @@ class Node:
 
     def _init_as_remote_node(self):
         addr = self.options['rpc_addr']
-        channel = grpc.insecure_channel(addr)
+        channel = grpc.insecure_channel(addr, options=[
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+        ])
         self.rpc_stub = SwitchmlIOStub(channel)
 
     def receive_async(self, node, round_id, total_packet_num, worker_number):
