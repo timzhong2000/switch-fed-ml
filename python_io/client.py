@@ -63,6 +63,7 @@ class Client(Node):
                                 send_window[i].buffer, server_addr)
                         except:
                             pass
+
         send_end = time.time()
 
         retransmit_time = self.check_and_retransmit(server, round_id, packet_list)
