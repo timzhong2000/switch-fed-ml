@@ -179,7 +179,7 @@ class Node:
             if self.type == "server":
                 self.rx_sock.sendto(pkt.gen_ack_packet(), client)
 
-    def create_packet(self, round_id: int, segment_id: int, group_id: int, bypass: bool, data: np.ndarray):
+    def create_packet(self, round_id: int, segment_id: int, group_id: int, bypass: bool, data: np.ndarray, multicast: bool = False):
         """
         - round_id: 轮次 id 可以认为一次 send 是一次轮次
         - segment_id (packet_id): 在当前轮次中包 id
@@ -191,8 +191,14 @@ class Node:
         创建的包可以直接发送，不推荐手动操作数据
         """
         pkt = Packet()
+        flow_control = 0
+        if bypass:
+            flow_control |= bypass_bitmap
+        if multicast:
+            flow_control |= multicast_bitmap
+
         pkt.set_header(
-            flow_control=bypass_bitmap if bypass else 0,
+            flow_control=flow_control,
             data_type=DataType.FLOAT32.value,
             round_id=round_id,
             segment_id=segment_id,

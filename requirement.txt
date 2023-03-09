@@ -2,4 +2,4 @@ grpcio
 protobuf
 numpy
 pandas
-p4runtime_sh
+p4runtime-shell

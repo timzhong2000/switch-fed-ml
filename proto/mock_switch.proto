@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+message Node {
+  int32 id = 1;
+  string ip_addr = 2;
+  int16 tx_port = 3;
+  int16 rx_port = 4;
+  int32 bitmap = 5;
+}
+
+message Group {
+  int32 id = 1;
+  Node ps = 2;
+}
+
+message AddNodeToGroup {
+  message Request {
+    int32 group_id = 1;
+    Node node = 2;
+  };
+}
+
+service MockSwitch {
+  rpc AddNodeToGroup (AddNodeToGroup.Request) returns (Null);
+  rpc AddNode (Node) returns (Null);
+}

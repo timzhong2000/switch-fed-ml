@@ -2,7 +2,7 @@
 control TensorBuffer(
   inout tensor_t tensor,
   in bit<32> pool_id,
-  in bool should_aggregate // true: 递增后交换，false: 直接交换
+  in bit<2> act // 2: 直接写入 1: 递增后交换，0: 直接交换
 ) {
   register<int<32>>(POOL_SIZE) r0;
   register<int<32>>(POOL_SIZE) r1;
@@ -335,8 +335,48 @@ control TensorBuffer(
     // loop end
   }
 
+  action write(){
+    // loop start
+    r0.write(pool_id, tensor.d0);
+    r1.write(pool_id, tensor.d1);
+    r2.write(pool_id, tensor.d2);
+    r3.write(pool_id, tensor.d3);
+    r4.write(pool_id, tensor.d4);
+    r5.write(pool_id, tensor.d5);
+    r6.write(pool_id, tensor.d6);
+    r7.write(pool_id, tensor.d7);
+    r8.write(pool_id, tensor.d8);
+    r9.write(pool_id, tensor.d9);
+    r10.write(pool_id, tensor.d10);
+    r11.write(pool_id, tensor.d11);
+    r12.write(pool_id, tensor.d12);
+    r13.write(pool_id, tensor.d13);
+    r14.write(pool_id, tensor.d14);
+    r15.write(pool_id, tensor.d15);
+    r16.write(pool_id, tensor.d16);
+    r17.write(pool_id, tensor.d17);
+    r18.write(pool_id, tensor.d18);
+    r19.write(pool_id, tensor.d19);
+    r20.write(pool_id, tensor.d20);
+    r21.write(pool_id, tensor.d21);
+    r22.write(pool_id, tensor.d22);
+    r23.write(pool_id, tensor.d23);
+    r24.write(pool_id, tensor.d24);
+    r25.write(pool_id, tensor.d25);
+    r26.write(pool_id, tensor.d26);
+    r27.write(pool_id, tensor.d27);
+    r28.write(pool_id, tensor.d28);
+    r29.write(pool_id, tensor.d29);
+    r30.write(pool_id, tensor.d30);
+    r31.write(pool_id, tensor.d31);
+    // loop end
+  }
+
   apply {
-    if(should_aggregate) {
+    if (act == 2) {
+      write();
+    }
+    else if(act == 1) {
       aggregate();
     } else {
       do_swap();

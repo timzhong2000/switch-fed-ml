@@ -75,29 +75,47 @@ control Processor (
     current_round_id.read(current_pool_round_id, pool_id);
 
     if ((hdr.switchfl.round_id > current_pool_round_id) || (hdr.switchfl.round_id == current_pool_round_id && hdr.switchfl.segment_id > current_pool_segment_id)) {
-      // 包领先聚合器
-      if (current_pool_is_busy == 1) {
-        // 发出部分聚合的包
-        
-        ////////////////////do swap//////////////////////
-        tensor_buffer_0.apply(hdr.tensor0, pool_id, false);
-        tensor_buffer_1.apply(hdr.tensor1, pool_id, false);
-        tensor_buffer_2.apply(hdr.tensor2, pool_id, false);
-        tensor_buffer_3.apply(hdr.tensor3, pool_id, false);
-        tensor_buffer_4.apply(hdr.tensor4, pool_id, false);
-        tensor_buffer_5.apply(hdr.tensor5, pool_id, false);
-        tensor_buffer_6.apply(hdr.tensor6, pool_id, false);
-        tensor_buffer_7.apply(hdr.tensor7, pool_id, false);
-        /////////////////////////////////////////////////
-
-        mark_action_to_finish();
-        release(pool_id);
-      } else {
-        mark_action_to_drop();
-      }
       // 为新包申请聚合器
       acquire(pool_id);
       aggregate_bitmap.write(pool_id, meta.bitmap);
+      if (current_pool_is_busy == 1) {
+        // 发出部分聚合的包
+        ////////////////////do swap//////////////////////
+        tensor_buffer_0.apply(hdr.tensor0, pool_id, 0);
+        tensor_buffer_1.apply(hdr.tensor1, pool_id, 0);
+        tensor_buffer_2.apply(hdr.tensor2, pool_id, 0);
+        tensor_buffer_3.apply(hdr.tensor3, pool_id, 0);
+        tensor_buffer_4.apply(hdr.tensor4, pool_id, 0);
+        tensor_buffer_5.apply(hdr.tensor5, pool_id, 0);
+        tensor_buffer_6.apply(hdr.tensor6, pool_id, 0);
+        tensor_buffer_7.apply(hdr.tensor7, pool_id, 0);
+        hdr.switchfl.round_id = current_pool_round_id;
+        hdr.switchfl.segment_id = current_pool_segment_id;
+        bit<16> current_pool_aggregate_count;
+        aggregate_count.read(current_pool_aggregate_count, pool_id);
+        hdr.aggregate_count = current_pool_aggregate_count;
+        /////////////////////////////////////////////////
+        mark_action_to_finish();
+      } else {
+        ////////////////////do write//////////////////////
+        tensor_buffer_0.apply(hdr.tensor0, pool_id, 2);
+        tensor_buffer_1.apply(hdr.tensor1, pool_id, 2);
+        tensor_buffer_2.apply(hdr.tensor2, pool_id, 2);
+        tensor_buffer_3.apply(hdr.tensor3, pool_id, 2);
+        tensor_buffer_4.apply(hdr.tensor4, pool_id, 2);
+        tensor_buffer_5.apply(hdr.tensor5, pool_id, 2);
+        tensor_buffer_6.apply(hdr.tensor6, pool_id, 2);
+        tensor_buffer_7.apply(hdr.tensor7, pool_id, 2);
+        /////////////////////////////////////////////////
+        if (meta.aggregate_finish_bitmap == meta.bitmap) {
+          // 单节点
+          mark_action_to_finish();
+          release(pool_id);
+        } else {
+          aggregate_bitmap.write(pool_id, meta.bitmap);
+          mark_action_to_drop();
+        }
+      }
     } else if (hdr.switchfl.round_id == current_pool_round_id && hdr.switchfl.segment_id == current_pool_segment_id && current_pool_is_busy == 1) {
       // 正常聚合，且当前聚合器有正在执行的任务
       bit<32> current_pool_bitmap;
@@ -112,14 +130,14 @@ control Processor (
 
       ////////////////////do_aggregate//////////////////
       add_aggregate_count(pool_id);
-      tensor_buffer_0.apply(hdr.tensor0, pool_id, true);
-      tensor_buffer_1.apply(hdr.tensor1, pool_id, true);
-      tensor_buffer_2.apply(hdr.tensor2, pool_id, true);
-      tensor_buffer_3.apply(hdr.tensor3, pool_id, true);
-      tensor_buffer_4.apply(hdr.tensor4, pool_id, true);
-      tensor_buffer_5.apply(hdr.tensor5, pool_id, true);
-      tensor_buffer_6.apply(hdr.tensor6, pool_id, true);
-      tensor_buffer_7.apply(hdr.tensor7, pool_id, true);
+      tensor_buffer_0.apply(hdr.tensor0, pool_id, 1);
+      tensor_buffer_1.apply(hdr.tensor1, pool_id, 1);
+      tensor_buffer_2.apply(hdr.tensor2, pool_id, 1);
+      tensor_buffer_3.apply(hdr.tensor3, pool_id, 1);
+      tensor_buffer_4.apply(hdr.tensor4, pool_id, 1);
+      tensor_buffer_5.apply(hdr.tensor5, pool_id, 1);
+      tensor_buffer_6.apply(hdr.tensor6, pool_id, 1);
+      tensor_buffer_7.apply(hdr.tensor7, pool_id, 1);
       //////////////////////////////////////////////////
       
       if(current_pool_bitmap == meta.aggregate_finish_bitmap) {
