@@ -91,7 +91,7 @@ def create_layer(origin_layer: torch.nn.Module, weight: torch.tensor, bias: torc
     return new_layer
 
 
-class Layer():
+class PruneTool():
     def __init__(self, curr_layer: torch.nn.Module, next_layer: torch.nn.Module, exist_channel_id: list):
         """
         exist_channel_id: 当前 origin layer 中的通道对应了原始模型的哪些通道
@@ -239,18 +239,18 @@ if __name__ == "__main__":
 
     # layer1 包含多个通道，使用 range 给他们编号 [0 ... conv1_out]
     # l1_prune1 指 l1 经过一次剪枝
-    tool = Layer(l1, l2, list(range(conv1_out)))
+    tool = PruneTool(l1, l2, list(range(conv1_out)))
     (l1_prune1, l2_prune1, patch1) = tool.prune([0], pic_size)
 
-    # 需要重新构建一个 layer，因为需要在 l1_prune1 的基础上再次剪枝
-    tool = Layer(l1_prune1, l2_prune1, tool.exist_channel_id)
+    # 需要重新构建一个 PruneTool，因为需要在 l1_prune1 的基础上再次剪枝
+    tool = PruneTool(l1_prune1, l2_prune1, tool.exist_channel_id)
     (l1_prune2, l2_prune2, patch2) = tool.prune([1], pic_size)
 
     # 用补丁还原通道，需要严格按照剪枝顺序
-    tool = Layer(l1_prune2, l2_prune2, tool.exist_channel_id)
+    tool = PruneTool(l1_prune2, l2_prune2, tool.exist_channel_id)
     (l1_rec2, l2_rec2) = tool.recovery(patch2)
 
-    tool = Layer(l1_rec2, l2_rec2, tool.exist_channel_id)
+    tool = PruneTool(l1_rec2, l2_rec2, tool.exist_channel_id)
     (l1_rec1, l2_rec1) = tool.recovery(patch1)
 
     # 对比剪枝还原前后参数是否产生错误
