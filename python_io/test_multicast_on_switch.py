@@ -8,13 +8,13 @@ from threading import Thread
 round_id = 100
 pkt_num = 10
 
-server_node_id = 10
+server_node_id = 100
 server_ip_addr = "127.0.0.1"
 server_rx_port = 50000
 server_tx_port = 50001
 server_rpc_addr = "127.0.0.1:50002"
 
-mock_switch_node_id = 9
+mock_switch_node_id = 101
 mock_switch_ip_addr = "127.0.0.1"
 mock_switch_port = 30000
 

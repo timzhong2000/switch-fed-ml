@@ -33,6 +33,7 @@
 
 # Python
 __pycache__
+data
 
 # VS Code
 .vscode

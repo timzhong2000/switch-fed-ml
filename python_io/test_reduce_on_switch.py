@@ -5,27 +5,35 @@ import numpy as np
 import time
 from multiprocessing import Process
 
-round_id = 101
-pkt_num = 10000
+round_id = 100
+pkt_num = 100
+node_num = 5
 
-server_node_id = 10
+start_port = 50000
+
+server_node_id = 100
 server_ip_addr = "127.0.0.1"
-server_rx_port = 50000
-server_tx_port = 50001
-server_rpc_addr = "127.0.0.1:50002"
+server_rx_port = start_port
+server_tx_port = start_port + 1
+server_rpc_addr = "127.0.0.1:%d" % (start_port + 2)
 
-mock_switch_node_id = 9
+mock_switch_node_id = 101
 mock_switch_ip_addr = "127.0.0.1"
 mock_switch_port = 30000
 
-client_node_id = 1
-client_ip_addr = "127.0.0.1"
-client_rx_port = 50003
-client_tx_port = 50004
-client_rpc_addr = "127.0.0.1:50005"
+
+client_configs = [
+    {
+        "node_id": i+1,
+        "ip_addr": "127.0.0.1",
+        "rx_port": start_port + (i+1)*3,
+        "tx_port": start_port + (i+1)*3 + 1,
+        "rpc_addr": "127.0.0.1:%d" % (start_port + (i+1) * 3 + 2)
+    } for i in range(node_num)
+]
 
 
-def client_send():
+def client_send(index: int):
     server = Server(
         node_id=server_node_id,
         ip_addr=server_ip_addr,
@@ -37,12 +45,13 @@ def client_send():
         rpc_addr=server_rpc_addr,
         is_remote_node=True
     )
+    config = client_configs[index]
     client = Client(
-        node_id=client_node_id,
-        ip_addr=client_ip_addr,
-        rx_port=client_rx_port,
-        tx_port=client_tx_port,
-        rpc_addr=client_rpc_addr,
+        node_id=config["node_id"],
+        ip_addr=config["ip_addr"],
+        rx_port=config["rx_port"],
+        tx_port=config["tx_port"],
+        rpc_addr=config["rpc_addr"],
         is_remote_node=False,
         # iface="veth1"
     )
@@ -73,14 +82,6 @@ def server_receive():
         is_remote_node=False,
         # iface="veth5"
     )
-    client = Client(
-        node_id=client_node_id,
-        ip_addr=client_ip_addr,
-        rx_port=client_rx_port,
-        tx_port=client_tx_port,
-        rpc_addr=client_rpc_addr,
-        is_remote_node=True
-    )
     switch = Switch(
         node_id=mock_switch_node_id,
         ip_addr=mock_switch_ip_addr,
@@ -88,7 +89,17 @@ def server_receive():
         tx_port=mock_switch_port,
         rpc_addr=""
     )
-    switch.add_child(client)
+    for config in client_configs:
+        switch.add_child(Client(
+            node_id=config["node_id"],
+            ip_addr=config["ip_addr"],
+            rx_port=config["rx_port"],
+            tx_port=config["tx_port"],
+            rpc_addr=config["rpc_addr"],
+            is_remote_node=True,
+            # iface="veth1"
+        ))
+
     packet_list = server.receive(
         node=switch,
         round_id=round_id,
@@ -98,10 +109,10 @@ def server_receive():
 
 
 p1 = Process(target=server_receive)
-p2 = Process(target=client_send)
-
 p1.start()
 time.sleep(0.5)
-p2.start()
+
+for i in range(node_num):
+    Process(target=client_send, args=(i,)).start()
 
 p1.join()
