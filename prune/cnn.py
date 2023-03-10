@@ -108,7 +108,7 @@ class PrunedConv():
             if current_layer_exist_channel[i] == prune_channel[cursor]:
                 prune_channel_index.append(i)
                 cursor += 1
-                if cursor >= len(prune_channel_index):
+                if cursor >= len(prune_channel):
                     break
         return prune_channel_index
 
