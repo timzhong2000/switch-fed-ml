@@ -242,11 +242,11 @@ if __name__ == "__main__":
     # layer1 包含多个通道，使用 range 给他们编号 [0 ... conv1_out]
     # l1_prune1 指 l1 经过一次剪枝
     tool = PruneTool(l1, l2, list(range(conv1_out)))
-    (l1_prune1, l2_prune1, patch1) = tool.prune([0])
+    (l1_prune1, l2_prune1, patch1) = tool.prune([0], pic_size)
 
     # 需要重新构建一个 PruneTool，因为需要在 l1_prune1 的基础上再次剪枝
     tool = PruneTool(l1_prune1, l2_prune1, tool.exist_channel_id)
-    (l1_prune2, l2_prune2, patch2) = tool.prune([1])
+    (l1_prune2, l2_prune2, patch2) = tool.prune([1], pic_size)
 
     # 用补丁还原通道，需要严格按照剪枝顺序
     tool = PruneTool(l1_prune2, l2_prune2, tool.exist_channel_id)
