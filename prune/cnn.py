@@ -91,9 +91,11 @@ def create_layer(origin_layer: torch.nn.Module, weight: torch.tensor, bias: torc
     return new_layer
 
 
+
 class PruneTool():
     def __init__(self, curr_layer: torch.nn.Module, next_layer: torch.nn.Module, exist_channel_id: list):
         """
+        目前仅支持 Linear 和 Conv2d 层
         exist_channel_id: 当前 origin layer 中的通道对应了原始模型的哪些通道
         """
         self.curr_layer = curr_layer
@@ -158,8 +160,6 @@ class PruneTool():
 
         new_curr_layer = create_layer(
             self.curr_layer, torch.vstack(out_temp), torch.vstack(bias_temp))
-        # todo 处理 scale
-
         new_next_layer = create_layer(
             self.next_layer, torch.hstack(in_temp), self.next_layer.bias.data)
         self.exist_channel_id = new_exist_channel_id
@@ -170,6 +170,10 @@ class PruneTool():
         prune_channel_id: 想要剪去的 channel_id 列表，从小到大排列
         pic_size 只有当下一层是 linear 的时候需要提供，目的是使用 pic_size 确定一个 conv 输出通道需要对应几个 linear 输入通道 
         """
+        should_scale_channel = isinstance(self.curr_layer, torch.nn.Conv2d) and isinstance(self.next_layer, torch.nn.Linear)
+        if should_scale_channel and pic_size == -1:
+            raise ("ERROR: 当前层为卷积层 & 下一层是全连接层 这种情况必须提供 pic_size 使得卷积层输出通道可以对齐全连接层输入通道")
+
         prune_index = self._get_prune_index(prune_channel_id)
         selected_index = list(
             set(range(self.curr_layer.weight.size(0))) - set(prune_index))
@@ -180,10 +184,8 @@ class PruneTool():
 
         # 剪下一个 layer 的输入通道
         (new_next_layer, prune_in) = self._prune_next(
-            scale_array(selected_index, pic_size) if isinstance(
-                self.next_layer, torch.nn.Linear) else selected_index,
-            scale_array(prune_index, pic_size) if isinstance(
-                self.next_layer, torch.nn.Linear) else prune_index,
+            scale_array(selected_index, pic_size) if should_scale_channel else selected_index,
+            scale_array(prune_index, pic_size) if should_scale_channel else prune_index,
         )
 
         # 更新元信息并构建补丁
@@ -226,12 +228,12 @@ if __name__ == "__main__":
     conv1_out = 4
 
     lin_in = conv1_out * pic_size
-    lin_out = 2
+    lin_out = 20
 
     conv2_out = 2
 
-    l1 = torch.nn.Conv2d(conv1_in, conv1_out, 100)
-    l2 = torch.nn.Linear(lin_in, lin_out, 100)
+    l1 = torch.nn.Conv2d(conv1_in, conv1_out, 3)
+    l2 = torch.nn.Linear(lin_in, lin_out)
     l1_weight_1 = torch.clone(l1.weight)  # 起始参数
     l2_weight_1 = torch.clone(l2.weight)  # 起始参数
 
@@ -240,11 +242,11 @@ if __name__ == "__main__":
     # layer1 包含多个通道，使用 range 给他们编号 [0 ... conv1_out]
     # l1_prune1 指 l1 经过一次剪枝
     tool = PruneTool(l1, l2, list(range(conv1_out)))
-    (l1_prune1, l2_prune1, patch1) = tool.prune([0], pic_size)
+    (l1_prune1, l2_prune1, patch1) = tool.prune([0])
 
     # 需要重新构建一个 PruneTool，因为需要在 l1_prune1 的基础上再次剪枝
     tool = PruneTool(l1_prune1, l2_prune1, tool.exist_channel_id)
-    (l1_prune2, l2_prune2, patch2) = tool.prune([1], pic_size)
+    (l1_prune2, l2_prune2, patch2) = tool.prune([1])
 
     # 用补丁还原通道，需要严格按照剪枝顺序
     tool = PruneTool(l1_prune2, l2_prune2, tool.exist_channel_id)
