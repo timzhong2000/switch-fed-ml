@@ -132,7 +132,7 @@ class PruneTool():
         # stack
         out_temp = []
         in_temp = []
-        bias_temp = []
+        bias_temp = torch.zeros(len(self.exist_channel_id) + len(patch.prune_channel_id))
         new_exist_channel_id = []
         while cursor1 < len(self.exist_channel_id) or cursor2 < len(patch.prune_channel_id):
             should_read_from_curr = (cursor1 < len(self.exist_channel_id) and cursor2 == len(
@@ -140,8 +140,7 @@ class PruneTool():
             if should_read_from_curr:
                 out_temp.append(select_index(
                     self.curr_layer.weight, 0, [cursor1]))
-                bias_temp.append(select_index(
-                    self.curr_layer.bias, 0, [cursor1]))
+                bias_temp[cursor1+cursor2] = self.curr_layer.bias[cursor1]
                 for i in range(patch.scale):
                     in_temp.append(select_index(
                         self.next_layer.weight, 1, [cursor1 * patch.scale + i]))
@@ -150,8 +149,7 @@ class PruneTool():
             else:
                 out_temp.append(select_index(
                     patch.out_prune_tensor, 0, [cursor2]))
-                bias_temp.append(select_index(
-                    patch.out_prune_bias, 0, [cursor2]))
+                bias_temp[cursor1+cursor2] = patch.out_prune_bias[cursor2]
                 for i in range(patch.scale):
                     in_temp.append(select_index(
                         patch.in_prune_tensor, 1, [cursor2 * patch.scale + i]))
@@ -159,7 +157,7 @@ class PruneTool():
                 cursor2 += 1
 
         new_curr_layer = create_layer(
-            self.curr_layer, torch.vstack(out_temp), torch.vstack(bias_temp))
+            self.curr_layer, torch.vstack(out_temp), bias_temp)
         new_next_layer = create_layer(
             self.next_layer, torch.hstack(in_temp), self.next_layer.bias.data)
         self.exist_channel_id = new_exist_channel_id
