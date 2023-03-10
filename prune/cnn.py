@@ -22,95 +22,162 @@ class CNN(torch.nn.Module):
         return x
 
 
-def prune_out_chan_cnn(conv: torch.nn.Conv2d, prune_index: torch.tensor):
-    pruned = conv.weight[prune_index]  # 被剪枝的参数
-
-
 class Patch():
-    def __init__(self, start_ratio: float, end_ratio: float, out_prune_tensor: torch.tensor, in_prune_tensor: torch.tensor) -> None:
+    def __init__(self, prune_channel_id: list, out_prune_tensor: torch.tensor, in_prune_tensor: torch.tensor, out_prune_bias: torch.tensor, scale: int = 1) -> None:
         """
-        表示参数重要度在 [start_ratio, end_ratio) 的参数
+        prune_channel_id 表示当前补丁中包括哪些通道 id 的数据
 
         out_prune_tensor 表示当前层输出通道被剪下来的 tensor
+        in_prune_tensor 表示下一层输入通道被剪下来的 tensor
 
-        out_prune_shape 表示当前输出通道被剪下来的参数形状，比如对于 Linear(in=200, out=80) 剪去 50 个输出通道
+        self.out_prune_shape 表示当前输出通道被剪下来的参数形状，比如对于 Linear(in=200, out=80) 剪去 50 个输出通道
         那么将会剪去一个 (50, 200) 的 tensor
         再比如对于一个 Conv2d(in=4, out=8, kernel_size=(3,3)) 剪去 2 个输出通道
         那么将会剪去一个 (4, 4, 3, 3) 的 tensor
 
         in_prune_shape 表示下一个层的输入通道被剪下来的参数形状
+
+        scale: 表示一个输出通道对应下一层几个输入通道，如果是 conv->flatten->linear 那么 linear 的输入通道数应该为 conv 输出通道乘以输出通道特征图大小
+        需要使用scale进行放缩
         """
-        self.start_ratio = start_ratio
-        self.end_ratio = end_ratio
-        self.in_prune_shape = in_prune_tensor.shape
-        self.out_prune_shape = out_prune_tensor.shape
+        self.prune_channel_id = prune_channel_id
+        # self.in_prune_shape = in_prune_tensor.shape
+        # self.out_prune_shape = out_prune_tensor.shape
         self.in_prune_tensor = in_prune_tensor
         self.out_prune_tensor = out_prune_tensor
+        self.out_prune_bias = out_prune_bias
 
 
-class PrunedConv():
-    def __init__(self, origin_layer: torch.nn.Conv2d, prune_weight: torch.tensor, prune_ratio: float = 0):
-        self.origin_layer = origin_layer
-        self.prune_weight = prune_weight  # 代表当前层所有输出通道的重要度
-        # 代表当前层拥有 [0, current_weight) 重要度
-        self.current_prune_ratio = prune_ratio
+def scale_array(array, factor):
+    # 创建一个空的 numpy 数组，长度是原数组乘以放缩因子
+    result = torch.empty(len(array) * factor, dtype=int)
+    # 遍历原数组中的每个元素
+    for i, x in enumerate(array):
+        # 将元素放缩成 factor 个连续的整数，并存入结果数组中
+        result[i*factor:(i+1)*factor] = torch.arange(x*factor, (x+1)*factor)
+    # 返回结果数组
+    return result
 
-    def prune(self, next_layer: torch.nn.Module, target_prune_ratio: float, pic_size: float = -1) -> Patch:
+# switchfl 的 layer，包装了 torch 的网络层
+
+
+def select_index(tensor: torch.tensor, dim: int, index):
+    return torch.index_select(tensor, dim, torch.tensor(index))
+
+
+class Layer():
+    def __init__(self, origin_layer: torch.nn.Module, exist_channel_id: list):
         """
+        exist_channel_id: 当前 origin layer 中的通道对应了原始模型的哪些通道
+        """
+        self.origin_layer = origin_layer
+        self.exist_channel_id = exist_channel_id
+
+    def _get_prune_index(self, prune_channel_id: list):
+        """
+        prune_channel_id: 想要剪去的 channel_id 列表，从小到大排列
+        返回 origin_layer.weight 中需要删除的行号
+        """
+        cursor = 0
+        prune_index = []
+        for i in range(len(self.exist_channel_id)):
+            if self.exist_channel_id[i] == prune_channel_id[cursor]:
+                prune_index.append(i)
+                cursor += 1
+                if cursor >= len(prune_channel_id):
+                    break
+        return prune_index
+
+    def recovery(self, next_layer: torch.nn.Module, patch: Patch):
+        """
+        恢复函数，可以使当前层的输出通道增加，下一层的输入通道相应增加
+        """
+        # 还原当前层输出通道
+        # cursor = 0 # 对于patch的指针
+        # for i in range(self.exist_channel_id):
+        #     while patch.prune_channel_id[i] < self.exist_channel_id[cursor]:
+        #         # 说明此处可以插入补丁中的通道
+        #         self.origin_layer.weight.data = self.origin_layer.weight.data.index_add(0, torch.tensor([cursor]), patch.prune_channel_id)
+        cursor1 = 0  # 对于 当前层输出通道 的指针
+        cursor2 = 0  # 对于 patch 的指针
+        # stack
+        out_temp = []
+        in_temp = []
+        bias_temp = []
+        new_exist_channel_id = []
+        while cursor1 < len(self.exist_channel_id) or cursor2 < len(patch.prune_channel_id):
+            should_read_from_curr = (cursor1 < len(self.exist_channel_id) and cursor2 == len(patch.prune_channel_id)) or self.exist_channel_id[cursor1] < patch.prune_channel_id[cursor2]
+            if should_read_from_curr:
+                out_temp.append(select_index(
+                    self.origin_layer.weight, 0, [cursor1]))
+                bias_temp.append(select_index(self.origin_layer.bias, 0, [cursor1]))
+                # todo 处理 scale
+                in_temp.append(select_index(next_layer.weight, 1, [cursor1]))
+                new_exist_channel_id.append(self.exist_channel_id[cursor1])
+                cursor1 += 1
+            else:
+                out_temp.append(select_index(patch.out_prune_tensor, 0, [cursor2]))
+                bias_temp.append(select_index(patch.out_prune_bias, 0 , [cursor2]))
+                # todo 处理 scale
+                in_temp.append(select_index(patch.in_prune_tensor, 1, [cursor2]))
+                new_exist_channel_id.append(patch.prune_channel_id[cursor2])
+                cursor2 += 1
+
+        self.origin_layer.weight.data = torch.vstack(out_temp)
+        self.origin_layer.bias.data = torch.vstack(bias_temp)
+        next_layer.weight.data = torch.hstack(in_temp)
+        self.exist_channel_id = new_exist_channel_id
+        return
+    
+    
+    def prune(self, next_layer: torch.nn.Module, prune_channel_id: list, pic_size: float = -1) -> Patch:
+        """
+        prune_channel_id: 想要剪去的 channel_id 列表，从小到大排列
         pic_size 只有当下一层是 linear 的时候需要提供，目的是使用 pic_size 确定一个 conv 输出通道需要对应几个 linear 输入通道 
         """
-        prune_index = self._get_prune_channel_index(target_prune_ratio)
-        selected_index = list(set(range(self.origin_layer.weight.size(0))) - set(prune_index))
+        prune_index = self._get_prune_index(prune_channel_id)
+        selected_index = list(
+            set(range(self.origin_layer.weight.size(0))) - set(prune_index))
 
-        prune_out = self._prune_current_layer(selected_index, prune_index)
+        # 剪当前 layer 的输出通道
+        (prune_out, prune_out_bias) = self._prune_current_layer(
+            selected_index, prune_index)
 
-        if isinstance(next_layer, torch.nn.Conv2d):
-            prune_in = self._prune_next_cnn(
-                next_layer, selected_index, prune_index)
-        if isinstance(next_layer, torch.nn.Linear):
-            if pic_size < 0:
-                print("对于 conv2d -> linear 的剪枝，需要提供 conv2d 输出的特征图大小")
-            prune_in = self._prune_next_linear(
-                next_layer,  selected_index, prune_index, pic_size)
-        return Patch(self.current_prune_ratio, target_prune_ratio, prune_out, prune_in)
+        # 剪下一个 layer 的输入通道
+        prune_in = self._prune_next(
+            next_layer,
+            scale_array(selected_index, pic_size) if isinstance(
+                next_layer, torch.nn.Linear) else selected_index,
+            scale_array(prune_index, pic_size) if isinstance(
+                next_layer, torch.nn.Linear) else prune_index,
+        )
+
+        # 更新元信息并构建补丁
+        self.exist_channel_id = list(
+            set(self.exist_channel_id) - set(prune_channel_id))
+        patch = Patch(prune_channel_id, prune_out, prune_in,
+                      prune_out_bias, pic_size if pic_size > 0 else 1)
+        return patch
 
     def _prune_current_layer(self, selected_index: list, prune_index: list) -> list:
         """
         返回剪枝的下标（在当前 weight 中的坐标，而不是原始模型）
         """
-        pruned = torch.index_select(self.origin_layer.weight, 0, torch.tensor(prune_index))
-        selected = torch.index_select(self.origin_layer.weight, 0, torch.tensor(selected_index))
-        self.origin_layer.weight.data = selected
-        return pruned
+        pruned_weight = select_index(self.origin_layer.weight, 0, prune_index)
+        selected_weight = select_index(
+            self.origin_layer.weight, 0, selected_index)
+        self.origin_layer.weight.data = selected_weight
 
-    def _prune_next_cnn(self, next_layer: torch.nn.Conv2d, selected_index: list, prune_index: list):
-        pruned = torch.index_select(next_layer.weight, 1, torch.tensor(prune_index))
-        selected = torch.index_select(next_layer.weight, 1, torch.tensor(selected_index))
+        pruned_bias = select_index(self.origin_layer.bias, 0, prune_index)
+        selected_bias = select_index(self.origin_layer.bias, 0, selected_index)
+        self.origin_layer.bias.data = selected_bias
+        return (pruned_weight, pruned_bias)
+
+    def _prune_next(self, next_layer: torch.nn.Conv2d, selected_index: list, prune_index: list):
+        pruned = select_index(next_layer.weight, 1, prune_index)
+        selected = select_index(next_layer.weight, 1, selected_index)
         next_layer.weight.data = selected
         return pruned
-
-    def _prune_next_linear(self, next_layer: torch.nn.Conv2d, selected_index: list, prune_index: list, pic_size: int):
-        # 暂时未实现
-        pass
-
-    def _get_prune_channel_index(self, prune_ratio: float):
-        """
-        返回在 super.weight.data 中的通道下标，用于剪去通道
-        """
-        # 在原始模型中的下标
-        current_layer_exist_channel = (
-            self.prune_weight >= self.current_prune_ratio).nonzero().flatten()
-        prune_channel = torch.logical_and(
-            self.prune_weight >= self.current_prune_ratio, self.prune_weight < prune_ratio).nonzero().flatten()
-        prune_channel_index = []
-        cursor = 0
-        for i in range(len(current_layer_exist_channel)):
-            if current_layer_exist_channel[i] == prune_channel[cursor]:
-                prune_channel_index.append(i)
-                cursor += 1
-                if cursor >= len(prune_channel):
-                    break
-        return prune_channel_index
 
     def get_shape(self):
         """
@@ -119,11 +186,38 @@ class PrunedConv():
         """
         return (self.origin_layer.weight.size(0), self.origin_layer.weight.size(1))
 
+
 if __name__ == "__main__":
-    a = torch.nn.Conv2d(1, 4, 3)
-    b = PrunedConv(a, torch.tensor([0, 0.25, 0.5, 1]))
-    c = torch.nn.Conv2d(4,1,3)
-    print(c.weight.data.shape)
-    b.prune(c, 0.5)
-    print(c.weight.data.shape)
-    print(c)
+
+    pic_size = 16  # 卷积层每个输出通道的特征图大小
+    conv1_in = 1
+    conv1_out = 10
+
+    lin_in = 4 * pic_size
+    lin_out = 2
+    
+    conv2_out = 2
+
+    l1 = torch.nn.Conv2d(conv1_in, conv1_out, 2)
+    l2 = torch.nn.Conv2d(conv1_out, conv2_out, 2)
+    l1_weight_1 = torch.clone(l1.weight) # 起始参数
+    l2_weight_1 = torch.clone(l2.weight) # 起始参数
+
+    # layer1 包含多个通道，使用 range 给他们编号 [0 ... conv1_out]
+    tool = Layer(l1, list(range(conv1_out)))
+
+    # 剪去通道
+    patch1 = tool.prune(l2, [0], pic_size)
+    patch2 = tool.prune(l2, [1], pic_size)
+    
+    # 用补丁还原通道，需要严格按照剪枝顺序
+    tool.recovery(l2, patch2)
+    tool.recovery(l2, patch1)
+
+    # 对比剪枝还原前后参数是否产生错误
+    l1_weight_2 = torch.clone(l1.weight) # 起始参数
+    l2_weight_2 = torch.clone(l2.weight) # 起始参数
+    print((l1_weight_2 - l1_weight_1).max())
+    print((l2_weight_2 - l2_weight_1).max())
+
+    print("finish")
