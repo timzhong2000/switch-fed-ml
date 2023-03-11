@@ -70,6 +70,46 @@ class Patch():
         self.scale = scale
 
 
+def dump_patch(patch: Patch):
+    """
+    返回 (meta, data)
+    data 为一维 torch.tensor
+    """
+    in_len= patch.in_prune_tensor.numel()
+    out_len= patch.out_prune_tensor.numel()
+    out_bias_len= patch.out_prune_bias.numel()
+    total_len = in_len + out_len + out_bias_len
+    meta = {
+        "prune_channel_id": patch.prune_channel_id,
+        "in_shape": patch.in_prune_tensor.shape,
+        "out_shape": patch.out_prune_tensor.shape,
+        "out_bias_shape": patch.out_prune_bias.shape,
+        "scale": patch.scale,
+        "in_len": in_len,
+        "out_len": out_len,
+        "out_bias_len": out_bias_len,
+        "total_len": total_len
+    }
+    data = torch.cat([patch.in_prune_tensor.flatten(), patch.out_prune_tensor.flatten(), patch.out_prune_bias.flatten()])
+    return (meta, data)
+
+def load_patch(meta, data) -> Patch:
+    cursor = 0
+    in_prune_tensor=(data[cursor:cursor+meta["in_len"]]).reshape(meta["in_shape"])
+    cursor += meta["in_len"]
+
+    out_prune_tensor=(data[cursor:cursor+meta["out_len"]]).reshape(meta["out_shape"]),
+    cursor += meta["out_len"]
+
+    out_prune_bias=(data[cursor:cursor+meta["out_bias_len"]]).reshape(meta["out_bias_shape"]),
+
+    return Patch(
+        prune_channel_id=meta["prune_channel_id"],
+        in_prune_tensor=in_prune_tensor,
+        out_prune_tensor=out_prune_tensor,
+        out_prune_bias=out_prune_bias,
+        scale=meta["scale"]
+    )
 
 class PruneTool():
     def __init__(self, curr_layer: torch.nn.Module, next_layer: torch.nn.Module, exist_channel_id: list):

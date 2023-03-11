@@ -49,6 +49,17 @@ def test_importance():
   imp = PruneTool(l1, l2, list(range(4))).cal_importance()
   print(imp)
 
+def test_dump_patch():
+  l1 = torch.nn.Conv2d(1, 4, 3)
+  l2 = torch.nn.Conv2d(4, 2, 3)
+  (_, _, patch1) = PruneTool(l1, l2, list(range(4))).prune([0])
+  # dump 成元信息和向量
+  meta, data = dump_patch(patch1)
+  # 从元信息和向量恢复patch
+  patch2 = load_patch(meta, data)
+  print(patch2)
+
 if __name__ == "__main__":
   # test_conv_to_linear()
-  test_importance()
+  # test_importance()
+  test_dump_patch()
