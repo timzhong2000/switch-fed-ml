@@ -82,6 +82,10 @@ class PruneTool():
         self.exist_channel_id = exist_channel_id
 
     def cal_importance(self):
+        """
+        返回一个 list 代表 curr_layer 输出通道的重要度
+        重要度与 exist_channel_id 在下标上一一对应，重要度 list 第 i 位置对应的 channel_id 为 exist_channel_id[i]
+        """
         return [torch.linalg.norm(self.curr_layer.weight[i].flatten(), ord=1) for i in range(len(self.exist_channel_id))]
 
     def _get_prune_index(self, prune_channel_id: list):
