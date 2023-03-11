@@ -19,12 +19,16 @@ class Job:
         self._lock.acquire()
         self.remain_worker_number = worker_number
         self.missing_slice_cache = None
+        self._finish_lock = threading.Lock() # 防止 finish 竞态问题
 
     def finish(self):
+        print("一个节点完成了发送流程，剩余等待节点个数为 %d" % (self.remain_worker_number-1))
+        self._finish_lock.acquire()
         self.remain_worker_number -= 1
-        print("一个节点完成了发送流程，剩余等待节点为 %d" % (self.remain_worker_number))
         if self.remain_worker_number == 0:
+            print("已经收齐所有节点的包，接收任务完成")
             self._lock.release()
+        self._finish_lock.release()
 
     def wait_until_job_finish(self):
         self._lock.acquire()
