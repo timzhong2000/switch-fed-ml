@@ -24,8 +24,8 @@ def create_layer(origin_layer: torch.nn.Module, weight: torch.tensor, bias: torc
     """
     if isinstance(origin_layer, torch.nn.Conv2d):
         new_layer = torch.nn.Conv2d(
-            in_channels=weight.size(0),
-            out_channels=weight.size(1),
+            in_channels=weight.size(1),
+            out_channels=weight.size(0),
             kernel_size=origin_layer.kernel_size,
             stride=origin_layer.stride,
             padding=origin_layer.padding,
@@ -35,8 +35,8 @@ def create_layer(origin_layer: torch.nn.Module, weight: torch.tensor, bias: torc
         )
     if isinstance(origin_layer, torch.nn.Linear):
         new_layer = torch.nn.Linear(
-            in_features=weight.size(0),
-            out_features=weight.size(1),
+            in_features=weight.size(1),
+            out_features=weight.size(0),
         )
     new_layer.weight.data = weight
     new_layer.bias.data = bias

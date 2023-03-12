@@ -60,6 +60,6 @@ def test_dump_patch():
   print(patch2)
 
 if __name__ == "__main__":
-  # test_conv_to_linear()
+  test_conv_to_linear()
   # test_importance()
-  test_dump_patch()
+  # test_dump_patch()
