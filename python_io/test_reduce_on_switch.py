@@ -6,8 +6,8 @@ import time
 from multiprocessing import Process
 
 round_id = 100
-pkt_num = 100
-node_num = 5
+pkt_num = 1
+node_num = 2
 
 start_port = 50000
 

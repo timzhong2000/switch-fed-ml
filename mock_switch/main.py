@@ -3,7 +3,7 @@ from node import Node
 from group import Group
 
 node_num = 2
-mock_switch = Switch("127.0.0.1", 30000, 101, debug=False)
+mock_switch = Switch("127.0.0.1", 30000, 101, debug=True)
 ps = Node(100, "127.0.0.1", 50000, 50001, 0)
 mock_switch.nodes[ps.id] = ps
 group = Group(1, ps)
