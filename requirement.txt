@@ -3,3 +3,4 @@ protobuf
 numpy
 pandas
 p4runtime-shell
+pyyaml

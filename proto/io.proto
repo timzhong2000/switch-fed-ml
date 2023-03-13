@@ -5,7 +5,11 @@ message Retransmission{
   message Request {
     int32 round_id = 1;
     int32 node_id = 2;
-    // map<packet_num, tensor_slice>
+    
+    // meta after dump 
+    bytes meta = 98;
+    
+    // map<packet_num, buffer>
     repeated bytes data = 99;
   };
 

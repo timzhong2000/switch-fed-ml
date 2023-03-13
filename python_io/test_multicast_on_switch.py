@@ -52,9 +52,10 @@ def client_recv():
         tx_port=client_tx_port,
         rpc_addr=client_rpc_addr,
         is_remote_node=False,
-        iface="lo"
+        iface="lo",
+        max_group_id=0
     )
-    packet_list2 = client.receive(
+    packet_list2, meta = client.receive(
         node=server,
         round_id=round_id,
         total_packet_num=pkt_num
@@ -67,7 +68,7 @@ def client_recv():
         else:
             recv_data = np.concatenate((recv_data, packet.tensor))
     loss = recv_data - data
-    print(loss)
+    print(loss.max())
 
 
 def server_send():
@@ -87,15 +88,15 @@ def server_send():
         rx_port=client_rx_port,
         tx_port=client_tx_port,
         rpc_addr=client_rpc_addr,
-        is_remote_node=True
+        is_remote_node=True,
+        max_group_id=0
     )
     switch = Switch(
         node_id=mock_switch_node_id,
         ip_addr=mock_switch_ip_addr,
         rx_port=mock_switch_port,
         tx_port=mock_switch_port,
-        rpc_addr="",
-        is_remote_node=True
+        rpc_addr=""
     )
     switch.add_child(client)
 
@@ -104,7 +105,7 @@ def server_send():
         server.create_packet(
             round_id=round_id,
             segment_id=i,
-            group_id=1,
+            group_id=0,
             bypass=False,
             data=data[i*256:(i+1)*256],
             multicast=True
@@ -114,7 +115,9 @@ def server_send():
     server.send(
         node=switch,
         round_id=round_id,
-        packet_list=packet_list
+        packet_list=packet_list,
+        meta={},
+        group_len_meta=[pkt_num]
     )
 
 

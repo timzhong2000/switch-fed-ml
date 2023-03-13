@@ -26,8 +26,8 @@ header_format = ">BBHIIHHH"
 header_size = struct.calcsize(header_format)
 
 # packer param
-# elemenet_per_packet = 2048  # MTU 9000
-elemenet_per_packet = 256  # MTU 1100
+elemenet_per_packet = 2048  # MTU 9000
+# elemenet_per_packet = 256  # MTU 1100
 switch_pool_size = 16
 pkt_size = elemenet_per_packet * 4 + header_size
 
@@ -123,10 +123,10 @@ class Packet:
     # 将 tensor 写入 buffer
     def deparse_payload(self):
         if self.data_type == DataType.FLOAT32.value:
-            self.buffer[header_size: pkt_size] = (
-                self.tensor * scaling_factor).astype(np.int32).tobytes()
+            data = (self.tensor * scaling_factor).astype(np.int32).tobytes()
         else:
-            self.buffer[header_size: pkt_size] = self.tensor.tobytes()
+            data = self.tensor.tobytes()
+        self.buffer[header_size: header_size + len(data) if len(data) < pkt_size else pkt_size] = data
 
     def gen_ack_packet(self):
         return struct.pack(

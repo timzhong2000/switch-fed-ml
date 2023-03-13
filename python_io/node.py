@@ -9,17 +9,18 @@ from io_pb2 import *
 import typing
 from grpc_server import GrpcServer
 import time
+import pickle
 
 
 class Node:
-    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, iface: str, group_id: int = 10):
+    def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, iface: str, max_group_id: int):
         self.options = {
             "ip_addr": ip_addr,
             "rx_port": rx_port,
             "tx_port": tx_port,
             "rpc_addr": rpc_addr,
             "node_id": node_id,
-            "group": group_id,  # 所在的分组
+            "max_group_id": max_group_id,  # 所在的最大分组号
             "speed": 100,  # 100 Mbps
         }
         self.type = "node"
@@ -33,6 +34,9 @@ class Node:
         self.rpc_server: typing.Optional[GrpcServer] = None
         self.rx_sock: typing.Optional[socket.socket] = None
         self.tx_sock: typing.Optional[socket.socket] = None
+
+        self.last_multicast_meta = None
+        self.last_patches = None
 
         if not is_remote_node:
             self.rx_sock = self._create_udp_socket()
@@ -102,7 +106,7 @@ class Node:
         - round_id: 接收的轮次 id
         - total_packet_num: 当前任务接收包数量
 
-        返回收到的 packet list
+        返回收到的 packet_list 和 meta
         """
         print("开始接收")
         if node.type == "switch":
@@ -117,7 +121,7 @@ class Node:
         job.wait_until_job_finish()
 
         received = job.bitmap.sum()
-        total = job.bitmap.size
+        total = job.total_packet_num
         print("receive %d packet, expect %d, loss %f %%" %
               (received, total, 100 * (total - received) / total))
         key: tuple = (round_id, node.options['node_id'])
@@ -125,7 +129,7 @@ class Node:
         if node.type == "switch":
             for child_node_id in node.children.keys():
                 del self.rx_jobs[(round_id, child_node_id)]
-        return job.buffer
+        return job.buffer, job.meta
 
     def add_child(self, node):
         # type: (Node) -> None
@@ -160,16 +164,28 @@ class Node:
             )
         )
 
-    def check_and_retransmit(self, node, round_id, packet_list):
-        # type: (Node, int, list)->int
+    def check_and_retransmit(self, node, round_id, packet_list, meta, max_segment_id):
+        # type: (Node, int, list, dict, int)->int
         retransmit_start = time.time()
-        missing_slice = node.rpc_stub.ReadMissingSlice(PacketLoss.Request(
-            round_id=round_id, node_id=self.options['node_id'], max_segment_id=len(packet_list)-1)).missing_packet_list
+        missing_slice = node.rpc_stub.ReadMissingSlice(
+            PacketLoss.Request(
+                round_id=round_id,
+                node_id=self.options['node_id'],
+                max_segment_id=max_segment_id
+            )
+        ).missing_packet_list
         payload = []
         for segment_id in missing_slice:
             payload.append(bytes(packet_list[segment_id].buffer))
-        node.rpc_stub.Retransmission(Retransmission.Request(
-            round_id=round_id, node_id=self.options['node_id'], data=payload))
+        meta_bytes = pickle.dumps(meta)
+        node.rpc_stub.Retransmission(
+            Retransmission.Request(
+                round_id=round_id,
+                node_id=self.options['node_id'],
+                data=payload,
+                meta=meta_bytes
+            )
+        )
         retransmit_end = time.time()
         return retransmit_end - retransmit_start
 
@@ -221,6 +237,6 @@ class Node:
             pool_id=segment_id % switch_pool_size
         )
         pkt.deparse_header()
-        pkt.set_tensor(data)
+        pkt.set_tensor(data[:elemenet_per_packet])
         pkt.deparse_payload()
         return pkt

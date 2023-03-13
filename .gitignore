@@ -35,8 +35,5 @@
 __pycache__
 data
 
-# VS Code
-.vscode
-
 # P4
 *.bmv2

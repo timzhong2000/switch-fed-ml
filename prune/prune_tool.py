@@ -1,5 +1,5 @@
 import torch
-
+from typing import List
 
 def scale_array(array, factor):
     # 创建一个空的 numpy 数组，长度是原数组乘以放缩因子
@@ -15,12 +15,12 @@ def scale_array(array, factor):
 
 
 def select_index(tensor: torch.tensor, dim: int, index):
-    return torch.index_select(tensor, dim, torch.tensor(index))
+    return torch.index_select(tensor, dim, index if torch.is_tensor(index) else torch.tensor(index))
 
 
 def create_layer(origin_layer: torch.nn.Module, weight: torch.tensor, bias: torch.tensor):
     """
-    创建一个新的网络层实例，输入和输出通道由传入的weight和bias确定
+    创建一个新的网络层实例，输入和输出通道由传入的 weight 和 bias 确定
     """
     if isinstance(origin_layer, torch.nn.Conv2d):
         new_layer = torch.nn.Conv2d(
@@ -93,15 +93,26 @@ def dump_patch(patch: Patch):
     data = torch.cat([patch.in_prune_tensor.flatten(), patch.out_prune_tensor.flatten(), patch.out_prune_bias.flatten()])
     return (meta, data)
 
+def dump_patches(patches: List[Patch]):
+    metas = []
+    datas = []
+    for patch in patches:
+        meta, data = dump_patch(patch)
+        metas.append(meta)
+        datas.append(data)
+    tensor = torch.cat(datas)
+    return metas, tensor
+
+
 def load_patch(meta, data) -> Patch:
     cursor = 0
     in_prune_tensor=(data[cursor:cursor+meta["in_len"]]).reshape(meta["in_shape"])
     cursor += meta["in_len"]
 
-    out_prune_tensor=(data[cursor:cursor+meta["out_len"]]).reshape(meta["out_shape"]),
+    out_prune_tensor=(data[cursor:cursor+meta["out_len"]]).reshape(meta["out_shape"])
     cursor += meta["out_len"]
 
-    out_prune_bias=(data[cursor:cursor+meta["out_bias_len"]]).reshape(meta["out_bias_shape"]),
+    out_prune_bias=(data[cursor:cursor+meta["out_bias_len"]]).reshape(meta["out_bias_shape"])
 
     return Patch(
         prune_channel_id=meta["prune_channel_id"],
@@ -111,6 +122,16 @@ def load_patch(meta, data) -> Patch:
         scale=meta["scale"]
     )
 
+def load_patches(metas: list, tensor: torch.tensor) -> List[Patch]:
+    cursor = 0
+    res:List[Patch] = []
+    for meta in metas:
+        data_len = meta["total_len"]
+        data = tensor[cursor: cursor + data_len]
+        cursor += data_len
+        res.append(load_patch(meta, data))
+    return res
+        
 class PruneTool():
     def __init__(self, curr_layer: torch.nn.Module, next_layer: torch.nn.Module, exist_channel_id: list):
         """
@@ -146,6 +167,8 @@ class PruneTool():
     def recovery(self, patch: Patch):
         """
         恢复函数，可以使当前层的输出通道增加，下一层的输入通道相应增加
+
+        返回 (new_curr_layer, new_next_layer, new_channel_id)
         """
         # 还原当前层输出通道
         # cursor = 0 # 对于patch的指针
@@ -187,13 +210,14 @@ class PruneTool():
             self.curr_layer, torch.vstack(out_temp), bias_temp)
         new_next_layer = create_layer(
             self.next_layer, torch.hstack(in_temp), self.next_layer.bias.data)
-        self.exist_channel_id = new_exist_channel_id
-        return (new_curr_layer, new_next_layer)
+        return (new_curr_layer, new_next_layer, new_exist_channel_id)
 
-    def prune(self, prune_channel_id: list, pic_size: float = -1) -> Patch:
+    def prune(self, prune_channel_id: list, pic_size: float = -1):
         """
         prune_channel_id: 想要剪去的 channel_id 列表，从小到大排列
         pic_size 只有当下一层是 linear 的时候需要提供，目的是使用 pic_size 确定一个 conv 输出通道需要对应几个 linear 输入通道 
+
+        返回 (new_curr_layer, new_next_layer, patch, new_exist_channel_id)
         """
         should_scale_channel = isinstance(self.curr_layer, torch.nn.Conv2d) and isinstance(
             self.next_layer, torch.nn.Linear)
@@ -217,11 +241,10 @@ class PruneTool():
         )
 
         # 更新元信息并构建补丁
-        self.exist_channel_id = list(
-            set(self.exist_channel_id) - set(prune_channel_id))
+        new_exist_channel_id = list(set(self.exist_channel_id) - set(prune_channel_id))
         patch = Patch(prune_channel_id, prune_out, prune_in,
                       prune_out_bias, pic_size if pic_size > 0 else 1)
-        return (new_curr_layer, new_next_layer, patch)
+        return (new_curr_layer, new_next_layer, patch, new_exist_channel_id)
 
     def _prune_current_layer(self, selected_index: list, prune_index: list) -> list:
         """

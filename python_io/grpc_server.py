@@ -15,6 +15,9 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
         self.node = node
 
     def Retransmission(self, request: Retransmission.Request, context):
+        """
+        重传的同时携带元信息，减少 1 RTT 的元信息传输时间
+        """
         job = self.node.rx_jobs.get((request.round_id, request.node_id))
         for slice in request.data:
             pkt = Packet()
@@ -22,6 +25,7 @@ class SwitchmlIOServicer(io_pb2_grpc.SwitchmlIOServicer):
             pkt.parse_header()
             pkt.parse_payload()
             job.handle_retransmission_packet(pkt)
+        job.handle_meta(request.meta)
         job.finish()
         return Empty()
 

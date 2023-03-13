@@ -1,7 +1,7 @@
 from packet import Packet
 import numpy as np
 import threading
-import math
+import pickle 
 
 # 接收任务
 class Job:
@@ -20,6 +20,7 @@ class Job:
         self.remain_worker_number = worker_number
         self.missing_slice_cache = None
         self._finish_lock = threading.Lock() # 防止 finish 竞态问题
+        self.meta = None
 
     def finish(self):
         print("一个节点完成了发送流程，剩余等待节点个数为 %d" % (self.remain_worker_number-1))
@@ -38,6 +39,7 @@ class Job:
         self.buffer[pkt.segment_id] = pkt
         self.bitmap[pkt.segment_id] = 1
 
+    
     def handle_retransmission_packet(self, pkt: Packet):
         if self.bitmap[pkt.segment_id] == 0:
             if self.buffer[pkt.segment_id] is None:
@@ -45,9 +47,16 @@ class Job:
             else:
                 self.buffer[pkt.segment_id].tensor += pkt.tensor
                 self.buffer[pkt.segment_id].aggregate_num += pkt.aggregate_num
-    
+                
+    def handle_meta(self, meta: bytes):
+        self.meta = pickle.loads(meta)
+        
     def read_missing_slice(self, range_end: int = -1):
         missing_slice = np.where(self.bitmap == 0)[0]
         if range_end == -1:
+            print("WARNING: 丢包检测时需要提供检测范围")
             return missing_slice
+        self.total_packet_num = range_end + 1
+        print("丢包id")
+        print(missing_slice[missing_slice <= range_end])
         return missing_slice[missing_slice <= range_end] 
