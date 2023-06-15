@@ -2,19 +2,18 @@ from python_io.server import Server
 from python_io.client import Client
 from python_io.node import Node
 from prune_tool import Patch
-from cnn import SparseCNN
 from typing import List
 from .utils import pack, unpack
 
 USE_SWITCH = True
-RECV_BUFFER = 1024 * 10 # 10MB
+RECV_BUFFER = 1024 * 1024 # 1GB
 
 class EServer(Server):
     def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, iface: str = ""):
         super().__init__(ip_addr, rx_port, tx_port, rpc_addr, node_id, is_remote_node, iface)
         self.round_id = 0
     
-    def multicast_model(self, node: Node, mini_model: SparseCNN, patches_list: List[List[Patch]]):
+    def multicast_model(self, node: Node, mini_model, patches_list: List[List[Patch]]):
         """
         下发模型，如果 node 为 switch 将会进行多播
 
@@ -36,7 +35,7 @@ class EServer(Server):
         self.send(node, self.round_id, pkt_list, meta, [pkt_len for pkt_len, _ in group_len_meta])
         return meta, pkt_list
 
-    def receive_model(self, node: Node) -> SparseCNN:
+    def receive_model(self, node: Node):
         """
         receive from client or switch
         """
@@ -56,19 +55,27 @@ class EClient(Client):
     def __init__(self, ip_addr: str, rx_port: int, tx_port: int, rpc_addr: str, node_id: int, is_remote_node: bool, max_group_id:int , iface: str = ""):
         super().__init__(ip_addr, rx_port, tx_port, rpc_addr, node_id, is_remote_node, max_group_id, iface)
         self.round_id = 0
+        self.last_patches = None
 
-    def reduce_model(self, server: Server, model: SparseCNN):
+    def reduce_model(self, server: Server, model):
         """
         本地迭代完成后向 PS 发送模型，不需要传输 meta 因为 ps 维护了当前节点上一次用的 meta
+
+        返回剪枝后的 patches 用于调试
         """
         patches = [model.redo_prune(old_patches)
                    for old_patches in self.last_patches]
-        group_len_meta, mini_model_meta, patches_meta_list, pkt_list = pack(self, self.round_id, model, patches)
+        group_len_meta, mini_model_meta, patches_meta_list, pkt_list = pack(
+            sender=self, 
+            round_id=self.round_id, 
+            mini_model=model, 
+            patches_list=patches
+        )
         self.send(server, self.round_id, pkt_list, {}, USE_SWITCH)
-        return
+        return patches
     
 
-    def receive_model(self, server: Server) -> SparseCNN:
+    def receive_model(self, server: Server):
         pkt_list, meta = self.receive(server, self.round_id, RECV_BUFFER)
         sparse_model, patches_list = unpack(
             meta["group_len_meta"],

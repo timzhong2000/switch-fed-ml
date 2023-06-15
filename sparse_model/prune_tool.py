@@ -1,6 +1,7 @@
 import torch
 from typing import List
 
+
 def scale_array(array, factor):
     # 创建一个空的 numpy 数组，长度是原数组乘以放缩因子
     result = torch.empty(len(array) * factor, dtype=int)
@@ -69,15 +70,30 @@ class Patch():
         self.out_prune_bias = out_prune_bias
         self.scale = scale
 
+    def __add__(self, patch):
+        if isinstance(patch, Patch):
+            self.in_prune_tensor += patch.in_prune_tensor
+            self.out_prune_bias += patch.out_prune_bias
+            self.out_prune_tensor += patch.out_prune_tensor
+            return self
+        raise "forbidden operation, patch add only accept patch"
 
+    def __truediv__(self, scale):
+        if isinstance(scale, int):
+            self.in_prune_tensor /= scale
+            self.out_prune_bias /= scale
+            self.out_prune_tensor /= scale
+            return self
+        raise "forbidden operation, patch div only accept int"
+    
 def dump_patch(patch: Patch):
     """
     返回 (meta, data)
     data 为一维 torch.tensor
     """
-    in_len= patch.in_prune_tensor.numel()
-    out_len= patch.out_prune_tensor.numel()
-    out_bias_len= patch.out_prune_bias.numel()
+    in_len = patch.in_prune_tensor.numel()
+    out_len = patch.out_prune_tensor.numel()
+    out_bias_len = patch.out_prune_bias.numel()
     total_len = in_len + out_len + out_bias_len
     meta = {
         "prune_channel_id": patch.prune_channel_id,
@@ -90,8 +106,10 @@ def dump_patch(patch: Patch):
         "out_bias_len": out_bias_len,
         "total_len": total_len
     }
-    data = torch.cat([patch.in_prune_tensor.flatten(), patch.out_prune_tensor.flatten(), patch.out_prune_bias.flatten()])
+    data = torch.cat([patch.in_prune_tensor.flatten(
+    ), patch.out_prune_tensor.flatten(), patch.out_prune_bias.flatten()])
     return (meta, data)
+
 
 def dump_patches(patches: List[Patch]):
     metas = []
@@ -106,13 +124,16 @@ def dump_patches(patches: List[Patch]):
 
 def load_patch(meta, data) -> Patch:
     cursor = 0
-    in_prune_tensor=(data[cursor:cursor+meta["in_len"]]).reshape(meta["in_shape"])
+    in_prune_tensor = (data[cursor:cursor+meta["in_len"]]
+                       ).reshape(meta["in_shape"])
     cursor += meta["in_len"]
 
-    out_prune_tensor=(data[cursor:cursor+meta["out_len"]]).reshape(meta["out_shape"])
+    out_prune_tensor = (
+        data[cursor:cursor+meta["out_len"]]).reshape(meta["out_shape"])
     cursor += meta["out_len"]
 
-    out_prune_bias=(data[cursor:cursor+meta["out_bias_len"]]).reshape(meta["out_bias_shape"])
+    out_prune_bias = (data[cursor:cursor+meta["out_bias_len"]]
+                      ).reshape(meta["out_bias_shape"])
 
     return Patch(
         prune_channel_id=meta["prune_channel_id"],
@@ -122,16 +143,18 @@ def load_patch(meta, data) -> Patch:
         scale=meta["scale"]
     )
 
+
 def load_patches(metas: list, tensor: torch.tensor) -> List[Patch]:
     cursor = 0
-    res:List[Patch] = []
+    res: List[Patch] = []
     for meta in metas:
         data_len = meta["total_len"]
         data = tensor[cursor: cursor + data_len]
         cursor += data_len
         res.append(load_patch(meta, data))
     return res
-        
+
+
 class PruneTool():
     def __init__(self, curr_layer: torch.nn.Module, next_layer: torch.nn.Module, exist_channel_id: list):
         """
@@ -142,12 +165,15 @@ class PruneTool():
         self.next_layer = next_layer
         self.exist_channel_id = exist_channel_id
 
-    def cal_importance(self):
+    def get_pruned_channel(self, ratio: float):
         """
         返回一个 list 代表 curr_layer 输出通道的重要度
         重要度与 exist_channel_id 在下标上一一对应，重要度 list 第 i 位置对应的 channel_id 为 exist_channel_id[i]
         """
-        return [torch.linalg.norm(self.curr_layer.weight[i].flatten(), ord=1) for i in range(len(self.exist_channel_id))]
+        l1norm = torch.tensor([torch.linalg.norm(self.curr_layer.weight[i].flatten(
+        ), ord=1) for i in range(len(self.exist_channel_id))])
+        value, index = l1norm.sort()
+        return sorted([self.exist_channel_id[i] for i in index[0: int(len(self.exist_channel_id) * ratio)]])
 
     def _get_prune_index(self, prune_channel_id: list):
         """
@@ -185,8 +211,8 @@ class PruneTool():
             len(self.exist_channel_id) + len(patch.prune_channel_id))
         new_exist_channel_id = []
         while cursor1 < len(self.exist_channel_id) or cursor2 < len(patch.prune_channel_id):
-            should_read_from_curr = (cursor1 < len(self.exist_channel_id) and cursor2 == len(
-                patch.prune_channel_id)) or self.exist_channel_id[cursor1] < patch.prune_channel_id[cursor2]
+            should_read_from_curr = cursor1 < len(self.exist_channel_id) and (cursor2 == len(
+                patch.prune_channel_id) or self.exist_channel_id[cursor1] < patch.prune_channel_id[cursor2])
             if should_read_from_curr:
                 out_temp.append(select_index(
                     self.curr_layer.weight, 0, [cursor1]))
@@ -241,7 +267,8 @@ class PruneTool():
         )
 
         # 更新元信息并构建补丁
-        new_exist_channel_id = list(set(self.exist_channel_id) - set(prune_channel_id))
+        new_exist_channel_id = sorted(list(
+            set(self.exist_channel_id) - set(prune_channel_id)))
         patch = Patch(prune_channel_id, prune_out, prune_in,
                       prune_out_bias, pic_size if pic_size > 0 else 1)
         return (new_curr_layer, new_next_layer, patch, new_exist_channel_id)
@@ -272,3 +299,65 @@ class PruneTool():
         return (self.curr_layer.weight.size(0), self.curr_layer.weight.size(1))
 
 
+if __name__ == "__main__":
+    def test_conv_to_linear():
+        pic_size = 4  # 卷积层每个输出通道的特征图大小
+        conv1_in = 1
+        conv1_out = 4
+
+        lin_in = conv1_out * pic_size
+        lin_out = 20
+
+        l1 = torch.nn.Conv2d(conv1_in, conv1_out, 3)
+        l2 = torch.nn.Linear(lin_in, lin_out)
+        l1_weight_1 = torch.clone(l1.weight)  # 起始参数
+        l2_weight_1 = torch.clone(l2.weight)  # 起始参数
+
+        # 剪去通道
+
+        # layer1 包含多个通道，使用 range 给他们编号 [0 ... conv1_out]
+        # l1_prune1 指 l1 经过一次剪枝
+        tool = PruneTool(l1, l2, list(range(conv1_out)))
+        (l1_prune1, l2_prune1, patch1,
+         exist_channel_id) = tool.prune([0], pic_size)
+
+        # 需要重新构建一个 PruneTool，因为需要在 l1_prune1 的基础上再次剪枝
+        tool = PruneTool(l1_prune1, l2_prune1, exist_channel_id)
+        (l1_prune2, l2_prune2, patch2,
+         exist_channel_id) = tool.prune([1], pic_size)
+
+        # 用补丁还原通道，需要严格按照剪枝顺序
+        tool = PruneTool(l1_prune2, l2_prune2, exist_channel_id)
+        (l1_rec2, l2_rec2, exist_channel_id) = tool.recovery(patch2)
+
+        tool = PruneTool(l1_rec2, l2_rec2, exist_channel_id)
+        (l1_rec1, l2_rec1, exist_channel_id) = tool.recovery(patch1)
+
+        # 对比剪枝还原前后参数是否产生错误
+        l1_weight_2 = torch.clone(l1_rec1.weight)  # 起始参数
+        l2_weight_2 = torch.clone(l2_rec1.weight)  # 起始参数
+        print((l1_weight_2 - l1_weight_1).max())
+        print((l2_weight_2 - l2_weight_1).max())
+
+        print("finish")
+
+    def test_importance():
+        l1 = torch.nn.Conv2d(1, 4, 3)
+        l2 = torch.nn.Conv2d(4, 2, 3)
+        l1w = l1.weight
+        imp = PruneTool(l1, l2, list(range(4))).cal_importance()
+        print(imp)
+
+    def test_dump_patch():
+        l1 = torch.nn.Conv2d(1, 4, 3)
+        l2 = torch.nn.Conv2d(4, 2, 3)
+        (_, _, patch1) = PruneTool(l1, l2, list(range(4))).prune([0])
+        # dump 成元信息和向量
+        meta, data = dump_patch(patch1)
+        # 从元信息和向量恢复patch
+        patch2 = load_patch(meta, data)
+        print(patch2)
+
+    test_conv_to_linear()
+    # test_importance()
+    # test_dump_patch()

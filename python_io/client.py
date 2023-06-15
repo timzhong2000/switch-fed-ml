@@ -28,11 +28,13 @@ class Client(Node):
 
         send_start = time.time()
         for i in range(min(window_size, total_packet_num)):
-            send_window.append(packet_list[i])
-            send_window_time.append(time.time())
-            self.tx_sock.sendto(send_window[i].buffer, server_addr)
-
-        rtt = 0.005
+            try:
+                send_window.append(packet_list[i])
+                send_window_time.append(time.time())
+                self.tx_sock.sendto(send_window[i].buffer, server_addr)
+            except:
+                pass
+        rtt = 0.01
         rx_pkt = Packet()
 
         while finish_cnt != total_packet_num:
@@ -66,12 +68,13 @@ class Client(Node):
 
         send_end = time.time()
 
+        time.sleep(0.05)
         retransmit_time = self.check_and_retransmit(server, round_id, packet_list, meta, len(packet_list) - 1)
 
         print("client %d 发送结束 发送耗时 %f 发送速率 %f Mbps 重传耗时 %f" % (
             self.options["node_id"],
             send_end - send_start,
-            elemenet_per_packet * total_packet_num * 4 / 1024 / 1024 * 8 / (send_end - send_start),
+            element_per_packet * total_packet_num * 4 / 1024 / 1024 * 8 / (send_end - send_start),
             retransmit_time)
         )
         return

@@ -49,7 +49,6 @@ control MyEgress(
         }
         if(hdr.switchfl.isValid() && hdr.switchfl.bypass == 0) {
             switchfl_sender.apply(hdr, meta, standard_meta);
-            // 约定 egress_rid == 9999 为向 ps 发送的标记
             if(meta.processor_action == Processor_Action.FINISH) {
                 if(meta.is_ps) {
                     switchfl_mark_to_emit_payload();

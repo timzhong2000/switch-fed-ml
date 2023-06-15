@@ -2,24 +2,25 @@ from server import Server
 from client import Client
 from switch import Switch
 import numpy as np
+from packet import element_per_packet
 from multiprocessing import Process
 from threading import Thread
 
 round_id = 100
-pkt_num = 10
+pkt_num = 1000
 
-server_node_id = 100
-server_ip_addr = "127.0.0.1"
+server_node_id = 9
+server_ip_addr = "11.11.11.9"
 server_rx_port = 50000
 server_tx_port = 50001
 server_rpc_addr = "127.0.0.1:50002"
 
 mock_switch_node_id = 101
-mock_switch_ip_addr = "127.0.0.1"
-mock_switch_port = 30000
+mock_switch_ip_addr = "11.11.11.10"
+mock_switch_port = 50000
 
 client_node_id = 1
-client_ip_addr = "127.0.0.1"
+client_ip_addr = "11.11.11.1"
 client_rx_port = 50003
 client_tx_port = 50004
 client_rpc_addr = "127.0.0.1:50005"
@@ -52,7 +53,7 @@ def client_recv():
         tx_port=client_tx_port,
         rpc_addr=client_rpc_addr,
         is_remote_node=False,
-        iface="lo",
+        iface="veth1",
         max_group_id=0
     )
     packet_list2, meta = client.receive(
@@ -80,7 +81,7 @@ def server_send():
         tx_port=server_tx_port,
         rpc_addr=server_rpc_addr,
         is_remote_node=False,
-        iface="lo"
+        iface="veth1"
     )
     client = Client(
         node_id=client_node_id,
@@ -100,14 +101,14 @@ def server_send():
     )
     switch.add_child(client)
 
-    data = np.random.rand((256 * pkt_num)).astype(np.float32)
+    data = np.random.rand((element_per_packet * pkt_num)).astype(np.float32)
     packet_list = [
         server.create_packet(
             round_id=round_id,
             segment_id=i,
-            group_id=0,
+            group_id=2,
             bypass=False,
-            data=data[i*256:(i+1)*256],
+            data=data[i*element_per_packet:(i+1)*element_per_packet],
             multicast=True
         ) for i in range(pkt_num)
     ]

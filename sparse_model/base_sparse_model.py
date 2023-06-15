@@ -1,6 +1,6 @@
 import torch
 
-class SparseModule(torch.nn.Module):
+class SparseModel(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
         

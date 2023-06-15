@@ -25,9 +25,8 @@ class Server(Node):
         total_packet_num = len(packet_list)
         for i in range(total_packet_num):
             self.tx_sock.sendto(packet_list[i].buffer, server_addr)
-            # TODO: 限速
-            if i % 100 == 0:
-                time.sleep(0.005)
+            self.tx_sock.recvfrom(1000)
+
         send_end = time.time()
 
         resend_time = 0
@@ -38,20 +37,21 @@ class Server(Node):
                     round_id, 
                     packet_list, 
                     meta,
-                    sum(group_len_meta[:client.options["max_group_id"] + 1])-1
+                    sum(group_len_meta[:client.options["max_group_id"]]) - 1 
                 )
+                print("check and retransmit finish node=%d" % (client.options["node_id"]))
         else:
             resend_time += self.check_and_retransmit(
                 node, 
                 round_id, 
                 packet_list, 
                 meta,
-                sum(group_len_meta[:node.options["max_group_id"] + 1])-1
+                sum(group_len_meta[:node.options["max_group_id"]]) - 1
             )
 
         print("server 发送结束 发送耗时 %f 发送速率 %f Mbps 重传耗时 %f" % (
             send_end - send_start,
-            elemenet_per_packet * total_packet_num * 4 /
+            element_per_packet * total_packet_num * 4 /
             1024 / 1024 * 8 / (send_end - send_start),
             resend_time))
             
